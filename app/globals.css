@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Theme: Professional High-Contrast White */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    /* Pure Black for maximum clarity */
+
+    /* Surface Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    /* Brand Primary - Earth Brown #8B6F47 */
+    --primary: 35 32% 41%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Brand Secondary */
+    --secondary: 0 0% 97%;
+    --secondary-foreground: 0 0% 10%;
+
+    /* Muted Elements - Clearly Visible */
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 30%;
+
+    /* Accents */
+    --accent: 35 32% 96%;
+    --accent-foreground: 35 32% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Sharp Visible Borders */
+    --border: 0 0% 85%;
+    --input: 0 0% 85%;
+    --ring: 35 32% 41%;
+
+    --radius: 0.5rem;
+    /* Professional Sharper Corners */
+
+    /* Data Vis - High Contrast */
+    --chart-1: 35 32% 41%;
+    --chart-2: 199 89% 45%;
+    --chart-3: 158 82% 40%;
+    --chart-4: 47 95% 45%;
+    --chart-5: 0 80% 50%;
+  }
+
+  .dark {
+    /* Theme: Professional High-Contrast Dark */
+    --background: 0 0% 5%;
+    /* Deep Black */
+    --foreground: 35 32% 85%;
+    /* Earthy Gold adjusted for text visibility */
+
+    /* Surface Colors */
+    --card: 0 0% 8%;
+    --card-foreground: 35 32% 85%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 35 32% 85%;
+
+    /* Brand Primary - Earth Gold from screenshot */
+    --primary: 35 32% 50%;
+    --primary-foreground: 0 0% 0%;
+
+    /* Brand Secondary */
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 35 32% 80%;
+
+    /* UI Shades - High Visibility */
+    --muted: 0 0% 12%;
+    --muted-foreground: 35 32% 65%;
+
+    --accent: 0 0% 15%;
+    --accent-foreground: 35 32% 90%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Visible Borders in Dark Mode */
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 35 32% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply text-foreground;
+  }
+
+  /* Modern Scrollbar */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full transition-colors hover:bg-muted-foreground/40;
+  }
+}
+
+@layer utilities {
+  /* 
+    Glassmorphism Level System 
+    Level 1: Subtle (Cards, Lists)
+    Level 2: Medium (Sidebars, Panels)
+    Level 3: Strong (Modals, Floating Elements)
+  */
+
+  .glass-1 {
+    @apply bg-card border border-border shadow-sm;
+  }
+
+  .glass-2 {
+    @apply bg-card border border-border shadow-md;
+  }
+
+  .glass-3 {
+    @apply bg-card border border-border shadow-lg;
+  }
+
+  /* Specific Component Utilities - Solid Professional Look */
+  .glass-card {
+    @apply bg-card rounded-lg border border-border shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/40;
+  }
+
+  .glass-panel {
+    @apply bg-card rounded-lg border border-border;
+  }
+
+  .glass-nav {
+    @apply sticky top-0 z-40 bg-background border-b border-border shadow-sm transition-all duration-200;
+  }
+
+  /* Solid Professional Text Colors */
+  .text-gradient-primary {
+    @apply text-primary font-bold;
+  }
+
+  .text-gradient-gold {
+    @apply text-amber-600 font-bold;
+  }
+
+  /* Animations */
+  .animate-in-fade-slide {
+    animation: fadeInSlideUp 0.5s ease-out forwards;
+  }
+
+  @keyframes fadeInSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

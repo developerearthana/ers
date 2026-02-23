@@ -1,0 +1,60 @@
+"use client";
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Building2, Layers, Users, Network, Settings, Briefcase, BarChart3, Tag } from 'lucide-react';
+
+export default function MastersLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    const navItems = [
+        { name: 'Company', href: '/masters/company', icon: Building2 },
+        { name: 'Entities', href: '/masters/subsidiaries', icon: Layers },
+        { name: 'Depts', href: '/masters/departments', icon: Briefcase },
+        { name: 'User Types', href: '/masters/usertypes', icon: Users },
+        { name: 'Users', href: '/masters/users', icon: Users },
+        { name: 'Teams', href: '/masters/teams', icon: Network },
+        { name: 'KPIs', href: '/masters/kpi-metrics', icon: BarChart3 },
+        { name: 'Vendors', href: '/masters/vendor-categories', icon: Tag },
+        { name: 'Templates', href: '/masters/project-templates', icon: Layers },
+    ];
+
+    const pathname = usePathname();
+
+    return (
+        <div className="flex flex-col min-h-screen bg-background/50 gap-2 p-2 pt-1">
+            {/* Top Navigation Bar */}
+            <div className="w-full glass-card rounded-xl p-2 flex flex-col items-start gap-2 sticky top-0 z-10 backdrop-blur-md bg-white/80 border-b border-gray-100 shadow-sm">
+                <div className="flex flex-wrap items-center gap-2 w-full">
+                    {navItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = pathname === item.href;
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all whitespace-nowrap border
+                                    ${isActive
+                                        ? 'bg-white text-green-700 border-green-200 shadow-sm'
+                                        : 'bg-white text-gray-700 border-gray-200 hover:bg-white hover:text-green-700'
+                                    }`}
+                            >
+                                <Icon className="w-4 h-4" />
+                                {item.name}
+                            </Link>
+                        );
+                    })}
+                </div>
+
+
+            </div>
+
+            {/* Main Content Area */}
+            <main className="flex-1 w-full max-w-7xl mx-auto">
+                {children}
+            </main>
+        </div>
+    );
+}

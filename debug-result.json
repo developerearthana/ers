@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-01-30T08:39:45.077Z",
+  "found": true,
+  "email": "superadmin@planrite.com",
+  "role": "super-admin",
+  "ipRestrictionEnabled": false,
+  "matchesPassword123": true,
+  "passwordHashSample": "$2b$10$caS"
+}

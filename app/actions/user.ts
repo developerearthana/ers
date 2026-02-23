@@ -1,0 +1,155 @@
+"use server";
+
+import connectToDatabase from "@/lib/db";
+import User, { IUser } from "@/models/User";
+import { z } from "zod";
+import { createJSONAction } from "@/lib/safe-action";
+import { revalidatePath } from "next/cache";
+
+export async function getDashboardUsers() {
+    await connectToDatabase();
+
+    const users = await User.find({})
+        .select('name image role email')
+        .lean();
+
+    const grouped = {
+        admins: [] as any[],
+        managers: [] as any[],
+        staff: [] as any[],
+        vendors: [] as any[],
+        clients: [] as any[]
+    };
+
+    users.forEach((user: any) => {
+        const u = {
+            id: user._id.toString(),
+            name: user.name,
+            image: user.image,
+            email: user.email
+        };
+
+        switch (user.role) {
+            case 'super-admin':
+            case 'admin':
+                grouped.admins.push(u);
+                break;
+            case 'manager':
+                grouped.managers.push(u);
+                break;
+            case 'staff':
+            case 'user': // Assuming 'user' is general staff
+                grouped.staff.push(u);
+                break;
+            case 'vendor':
+                grouped.vendors.push(u);
+                break;
+            case 'customer':
+                grouped.clients.push(u);
+                break;
+        }
+    });
+
+    return grouped;
+}
+
+export async function getAllUsers() {
+    await connectToDatabase();
+    const users = await User.find({})
+        .select('name role dept image jobTitle email status')
+        .sort({ name: 1 })
+        .lean();
+    return JSON.parse(JSON.stringify(users));
+}
+
+// --- CRUD Actions ---
+
+const UserSchema = z.object({
+    id: z.string().optional(),
+    name: z.string().min(1, "Name is required"),
+    email: z.string().email("Invalid email address"),
+    role: z.string().min(1, "Role is required"),
+    dept: z.string().optional(),
+    jobTitle: z.string().optional(),
+    status: z.enum(['Active', 'Inactive', 'On Leave']).default('Active'),
+    password: z.string().optional().or(z.literal('')), // Optional for update
+    customRole: z.string().optional(),
+});
+
+
+export const createUser = createJSONAction(UserSchema, async (data) => {
+    try {
+        await connectToDatabase();
+
+        // Simple manual check for existing email
+        const existing = await User.findOne({ email: data.email });
+        if (existing) return { error: "Email already exists" };
+
+        const newUser = await User.create({
+            name: data.name,
+            email: data.email,
+            password: data.password || 'password123', // Default password
+            role: data.role,
+            dept: data.dept || 'General',
+            jobTitle: data.jobTitle,
+            status: data.status,
+            provider: 'credentials',
+            customRole: data.customRole || undefined
+        });
+
+        revalidatePath("/masters/users");
+        return { success: true, user: JSON.parse(JSON.stringify(newUser)) };
+    } catch (error: any) {
+        return { error: error.message };
+    }
+});
+
+export const updateUser = createJSONAction(UserSchema, async (data) => {
+    try {
+        await connectToDatabase();
+        if (!data.id) throw new Error("ID required for update");
+
+        const updateData: any = {
+            name: data.name,
+            email: data.email,
+            role: data.role,
+            dept: data.dept,
+            jobTitle: data.jobTitle,
+            status: data.status,
+            customRole: data.customRole || undefined,
+        };
+        // Only update password if provided
+        if (data.password) {
+            updateData.password = data.password;
+        }
+
+        const user = await User.findByIdAndUpdate(data.id, updateData, { new: true });
+
+        revalidatePath("/masters/users");
+        return { success: true, user: JSON.parse(JSON.stringify(user)) };
+    } catch (error: any) {
+        return { error: error.message };
+    }
+});
+
+export const deleteUser = createJSONAction(z.object({ id: z.string() }), async (data) => {
+    try {
+        await connectToDatabase();
+        if (!data.id) throw new Error("ID required for deletion");
+
+        await User.findByIdAndDelete(data.id);
+
+        revalidatePath("/masters/users");
+        return { success: true };
+    } catch (error: any) {
+        return { error: error.message || "Failed to delete user" };
+    }
+});
+
+export const toggleUserStatus = async (id: string, currentStatus: string) => {
+    await connectToDatabase();
+    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+    await User.findByIdAndUpdate(id, { status: newStatus });
+    revalidatePath("/masters/users");
+    return { success: true, status: newStatus };
+};

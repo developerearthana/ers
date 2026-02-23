@@ -1,0 +1,29 @@
+# Node
+node_modules/
+
+# Build outputs (App Engine will build from source)
+.next/
+out/
+
+# Dev/Test files
+.env.local
+.env.development
+coverage/
+e2e/
+*.spec.ts
+*.test.ts
+jest.config.*
+playwright.config.*
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docs (not needed at runtime)
+*.md

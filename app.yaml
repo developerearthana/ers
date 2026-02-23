@@ -1,0 +1,16 @@
+runtime: nodejs20
+instance_class: F1
+automatic_scaling:
+  min_instances: 0
+  max_instances: 1
+  target_cpu_utilization: 0.65
+  target_throughput_utilization: 0.65
+
+env_variables:
+  NODE_ENV: 'production'
+  # Set these in your deployment platform's environment variables settings
+  # MONGODB_URI: 'your-mongodb-uri'
+  # AUTH_SECRET: 'your-auth-secret'
+  # AUTH_TRUST_HOST: 'true'
+  # AUTH_GOOGLE_ID: 'your-google-client-id'
+  # AUTH_GOOGLE_SECRET: 'your-google-client-secret'
