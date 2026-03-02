@@ -2,13 +2,8 @@ __tests__
 __mocks__
 docs
 scripts
-logs
-e2e
-playwright.config.ts
 .vscode
 .github
-.dockerignore
-.gcloudignore
 Dockerfile
 app.yaml
 jest.config.ts
@@ -16,4 +11,4 @@ jest.setup.ts
 build_logs.txt
 build_logs_utf8.txt
 build_output.txt
-README.md
+*.md
