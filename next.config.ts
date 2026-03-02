@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   // Performance: Enable React compiler optimizations
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion', 'recharts'],
