@@ -21,19 +21,24 @@ const UpdateCompanySchema = z.object({
 });
 
 export const getCompany = async () => {
-    await connectToDatabase();
-    // For this app, we assume a single main company.
-    // In a multi-tenant app, we'd filter by user's org ID.
-    let company = await Company.findOne();
-    if (!company) {
-        // Create default if not exists
-        company = await Company.create({
-            name: 'Earthana India Pvt Ltd',
-            address: '1201, Cyber One, Business Park, Vashi, Mumbai - 400703, Maharashtra',
-            registrationNumber: '27AABCU9603R1Z2',
-        });
+    try {
+        await connectToDatabase();
+        // For this app, we assume a single main company.
+        // In a multi-tenant app, we'd filter by user's org ID.
+        let company = await Company.findOne();
+        if (!company) {
+            // Create default if not exists
+            company = await Company.create({
+                name: 'Earthana India Pvt Ltd',
+                address: '1201, Cyber One, Business Park, Vashi, Mumbai - 400703, Maharashtra',
+                registrationNumber: '27AABCU9603R1Z2',
+            });
+        }
+        return JSON.parse(JSON.stringify(company));
+    } catch (e) {
+        // Return a fallback so the layout doesn't crash during static build or if DB is down
+        return { name: "Earthana (Offline Mode)" };
     }
-    return JSON.parse(JSON.stringify(company));
 };
 
 export const updateCompany = createJSONAction(UpdateCompanySchema, async (data) => {
