@@ -3,9 +3,6 @@
 import { signIn } from '@/auth';
 import { AuthError } from 'next-auth';
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-
 export async function authenticate(
     prevState: string | undefined,
     formData: FormData,
@@ -16,25 +13,16 @@ export async function authenticate(
         if (error instanceof AuthError) {
             switch (error.type) {
                 case 'CredentialsSignin':
-                    return 'Invalid credentials.';
+                    return 'Invalid email or password.';
                 default:
-                    console.error('Auth Error Type:', error.type);
-                    console.error('Auth Error Message:', error.message);
-                    console.error('Full Error:', error);
-                    return `Error: ${error.message}`;
+                    return 'Something went wrong. Please try again.';
             }
         }
+        // Re-throw NEXT_REDIRECT (this is how Next.js handles successful redirect)
         const err = error as any;
-        const isRedirect = err.message === 'NEXT_REDIRECT' || (err.digest && err.digest.toString().includes('NEXT_REDIRECT')) || (err.message && err.message.includes('NEXT_REDIRECT'));
-        if (isRedirect) {
+        if (err?.digest?.includes('NEXT_REDIRECT') || err?.message?.includes('NEXT_REDIRECT')) {
             throw error;
         }
-        console.error('Auth Error:', error);
         return 'Something went wrong.';
     }
 }
-
-export async function googleSignIn() {
-    await signIn('google', { redirectTo: '/' });
-}
-
