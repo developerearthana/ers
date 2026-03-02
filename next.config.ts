@@ -1,10 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Performance: Enable React compiler optimizations
-  experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion', 'recharts'],
-  },
   // Speed: Compress responses
   compress: true,
   // Speed: Disable powered-by header (tiny save)
