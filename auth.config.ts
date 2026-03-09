@@ -17,6 +17,9 @@ export const authConfig = {
                - Everything else is protected.
             */
             const isAuthPage = nextUrl.pathname.startsWith('/login') || nextUrl.pathname.startsWith('/register');
+            const isPublicAsset = nextUrl.pathname.includes('.') || nextUrl.pathname.match(/\.(svg|png|jpg|jpeg|ico|webp)$/) || nextUrl.pathname.startsWith('/public/');
+
+            if (isPublicAsset) return true;
 
             if (isAuthPage) {
                 if (isLoggedIn) return Response.redirect(new URL('/', nextUrl));
