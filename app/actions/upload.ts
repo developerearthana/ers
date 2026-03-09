@@ -16,6 +16,12 @@ export async function uploadFile(formData: FormData) {
             return { error: "No file uploaded" };
         }
 
+        // Enforce 10 MB server-side limit
+        const MAX_SIZE = 10 * 1024 * 1024; // 10 MB in bytes
+        if (file.size > MAX_SIZE) {
+            return { error: `File exceeds the 10 MB limit (${(file.size / 1024 / 1024).toFixed(1)} MB uploaded).` };
+        }
+
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 

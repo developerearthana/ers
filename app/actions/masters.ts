@@ -21,7 +21,8 @@ export async function createMaster(data: Partial<IMaster>) {
     await connectToDatabase();
     try {
         const master = await Master.create(data);
-        revalidatePath("/settings/masters");
+        revalidatePath("/masters/kpi-metrics");
+        revalidatePath("/masters/vendor-categories");
         return { success: true, data: JSON.parse(JSON.stringify(master)) };
     } catch (error: any) {
         return { success: false, error: error.message };
@@ -35,7 +36,8 @@ export async function updateMaster(id: string, data: Partial<IMaster>) {
     await connectToDatabase();
     try {
         const master = await Master.findByIdAndUpdate(id, data, { new: true });
-        revalidatePath("/settings/masters");
+        revalidatePath("/masters/kpi-metrics");
+        revalidatePath("/masters/vendor-categories");
         return { success: true, data: JSON.parse(JSON.stringify(master)) };
     } catch (error: any) {
         return { success: false, error: error.message };
@@ -48,8 +50,9 @@ export async function updateMaster(id: string, data: Partial<IMaster>) {
 export async function deleteMaster(id: string) {
     await connectToDatabase();
     try {
-        await Master.findByIdAndDelete(id); // Hard delete for now to keep it simple, or soft delete with isActive=false
-        revalidatePath("/settings/masters");
+        await Master.findByIdAndDelete(id);
+        revalidatePath("/masters/kpi-metrics");
+        revalidatePath("/masters/vendor-categories");
         return { success: true };
     } catch (error: any) {
         return { success: false, error: error.message };

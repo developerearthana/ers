@@ -145,7 +145,7 @@ describe('Safe Action Utilities', () => {
                 title: 'AB', // Too short
                 priority: 'urgent', // Invalid enum value
                 dueDate: 'invalid-date',
-            };
+            } as any;
 
             const result = await action(inputData);
 
@@ -166,7 +166,7 @@ describe('Safe Action Utilities', () => {
             const inputData = {
                 title: 'Valid Title',
                 // Missing priority and dueDate
-            };
+            } as any;
 
             const result = await action(inputData);
 

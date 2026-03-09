@@ -10,6 +10,7 @@ import { KPI_METRICS } from '@/lib/constants';
 import { MOCK_USERS, MOCK_KPI_TARGETS } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
 import { PermissionGuard } from '@/components/auth/PermissionGuard';
+import { KPITrackingGrid } from '@/components/kpi/KPITrackingGrid';
 
 const revenueData = [
     { name: 'Jan', revenue: 4200, expenses: 2400 },
@@ -224,6 +225,20 @@ export default function ExecutiveDashboard({ user }: { user?: any }) {
                         </div>
                     </CardWrapper>
                 </PermissionGuard>
+            </div>
+
+            {/* KPI Performance Operations Grid */}
+            <div className="space-y-4 pt-4 border-t border-border/50">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 text-primary rounded-xl">
+                        <Target className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-foreground">KPI Operations Status</h2>
+                        <p className="text-sm text-muted-foreground">Detailed team performance & individual member contributions</p>
+                    </div>
+                </div>
+                <KPITrackingGrid />
             </div>
 
             <KPIEntryModal

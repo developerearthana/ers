@@ -4,16 +4,17 @@ import {
     Bell, Search, User, Menu,
     PieChart, Users, BarChart3, ShoppingCart, FileText, Settings,
     LayoutDashboard, List, Kanban, CheckSquare, Package, Tags, ArrowLeftRight, History,
-    UserCheck, Banknote, CalendarDays, Briefcase, KeyRound
+    UserCheck, Banknote, CalendarDays, Briefcase, KeyRound, LogOut
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { navItems } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { ModeToggle } from "@/components/ui/theme-toggle";
+import { Logo } from "@/components/ui/logo";
 import { uploadFile } from "@/app/actions/upload";
 import { updateProfile } from "@/app/actions/user-profile";
 import { toast } from "@/components/ui/toaster";
@@ -47,6 +48,7 @@ const breadcrumbNameMap: { [key: string]: string } = {
     plan: "Quarterly Planner",
     review: "Review Meetings",
     kpi: "Weekly KPI",
+    "kpi-assignments": "KPI Assignments",
 };
 
 export function Header({ user }: { user?: any }) {
@@ -86,8 +88,15 @@ export function Header({ user }: { user?: any }) {
         }
     };
 
+    const handleLogout = async () => {
+        await signOut({ redirect: false });
+        setIsProfileOpen(false);
+        router.replace("/login");
+        router.refresh();
+    };
+
     return (
-        <header className="sticky top-0 z-40 mx-6 mt-3 mb-4 rounded-xl glass-2 border border-border/40 shadow-sm transition-all h-16 flex items-center justify-between px-6" >
+        <header className="sticky top-0 z-40 mx-3 md:mx-6 mt-3 mb-4 rounded-xl glass-2 border border-border/40 shadow-sm transition-all h-16 flex items-center justify-between px-3 md:px-6" >
 
             {/* Left: Breadcrumbs / Title */}
             <div className="flex items-center gap-4">
@@ -100,8 +109,9 @@ export function Header({ user }: { user?: any }) {
                     <SheetContent side="left" className="w-72 p-0">
                         <div className="flex flex-col h-full bg-white dark:bg-black">
                             <div className="p-6 border-b border-border dark:border-white/10">
-                                <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                                    Earthana <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase">Mobile</span>
+                                <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-3">
+                                    <Logo variant="icon" className="h-10 w-10" />
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase">Mobile</span>
                                 </h2>
                             </div>
                             <div className="flex-1 overflow-y-auto py-4">
@@ -234,9 +244,13 @@ export function Header({ user }: { user?: any }) {
 
                                 <div className="h-[1px] bg-border my-1"></div>
 
-                                <Link href="/api/auth/signout" className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors w-full">
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors w-full text-left"
+                                >
+                                    <LogOut className="w-4 h-4" />
                                     Logout
-                                </Link>
+                                </button>
                             </div>
                         </div>
                     )}

@@ -10,7 +10,7 @@ import { CommandMenu } from "@/components/ui/command-menu";
 const manrope = Manrope({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Earthana ERP",
+  title: "Earthana",
   description: "Advanced Environmental Solutions Management",
 };
 
@@ -32,8 +32,8 @@ export default async function RootLayout({
       <body className={manrope.className} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <CommandMenu />

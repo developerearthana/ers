@@ -5,6 +5,7 @@ import { createJSONAction } from "@/lib/safe-action";
 import { userService } from "@/services/UserService";
 import { hrmService } from "@/services/HRMService";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 
 // --- User Actions ---
 
@@ -48,15 +49,11 @@ const UpdateUserSchema = z.object({
 });
 
 export const updateUser = createJSONAction(UpdateUserSchema, async (data) => {
-    try {
-        const { id, ...updateData } = data;
-        await userService.updateUser(id, updateData);
-        revalidatePath("/hrm/employees");
-        revalidatePath("/hrm/employees/[id]/salary"); // Revalidate salary page
-        return { success: true };
-    } catch (error: any) {
-        return { error: error.message || "Failed to update user" };
-    }
+    const { id, ...updateData } = data;
+    await userService.updateUser(id, updateData);
+    revalidatePath("/hrm/employees");
+    revalidatePath("/hrm/employees/[id]/salary");
+    return { success: true };
 });
 
 export const toggleUserStatus = async (id: string, currentStatus: string) => {
@@ -91,11 +88,105 @@ export const adminResetPassword = async (id: string, newPassword: string) => {
     }
 };
 
+// --- Attendance Actions ---
+
+export const getAttendance = async (userId?: string, month?: number, year?: number) => {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) return { success: false, error: 'Unauthorized', data: [] };
+        // Use server-session ID; only admin can pass a different userId
+        const role = session.user.role?.toLowerCase() || '';
+        const isAdmin = role.includes('admin') || role.includes('manager') || role.includes('hr');
+        const resolvedUserId = (isAdmin && userId) ? userId : session.user.id;
+        const data = await hrmService.getAttendance(resolvedUserId, month, year);
+        return { success: true, data };
+    } catch (error: any) {
+        return { success: false, error: error.message, data: [] };
+    }
+};
+
+export const punchIn = async (_clientUserId?: string, workMode: 'Office' | 'Remote' = 'Office') => {
+    try {
+        // Always use server-side session — never trust client-passed userId
+        const session = await auth();
+        if (!session?.user?.id) return { success: false, error: 'You must be logged in to punch in.' };
+        const userId = session.user.id;
+        const data = await hrmService.punchIn(userId, workMode);
+        revalidatePath("/hrm/attendance");
+        return { success: true, data };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const punchOut = async (_clientUserId?: string) => {
+    try {
+        // Always use server-side session — never trust client-passed userId
+        const session = await auth();
+        if (!session?.user?.id) return { success: false, error: 'You must be logged in to punch out.' };
+        const userId = session.user.id;
+        const data = await hrmService.punchOut(userId);
+        revalidatePath("/hrm/attendance");
+        return { success: true, data };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};
+
 // --- Leave Actions ---
+
+export const getAllAttendance = async (dateStr?: string) => {
+    try {
+        const date = dateStr ? new Date(dateStr) : new Date();
+        const data = await hrmService.getAllAttendance(date);
+        return { success: true, data };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const getAttendanceReport = async (month: number, year: number) => {
+    try {
+        const data = await hrmService.getAttendanceReport(month, year);
+        return { success: true, data };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const getAbsentees = async (dateStr?: string) => {
+    try {
+        const date = dateStr ? new Date(dateStr) : new Date();
+        const data = await hrmService.getAbsentees(date);
+        return { success: true, data };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const getLiveUsers = async () => {
+    try {
+        const data = await hrmService.getLiveUsers();
+        return { success: true, data };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};
 
 export const getLeaves = async () => {
     try {
-        const data = await hrmService.getLeaveRequests();
+        const session = await auth();
+        if (!session?.user?.id) throw new Error("Unauthorized");
+
+        const filter: any = {};
+        const r = session.user.role?.toLowerCase() || '';
+        const isAdminOrHR = r.includes('admin') || r.includes('manager') || r.includes('hr');
+
+        if (!isAdminOrHR) {
+            filter.userId = session.user.id;
+        }
+
+        const data = await hrmService.getLeaveRequests(filter);
         return { success: true, data };
     } catch (error: any) {
         return { success: false, error: error.message };
@@ -112,13 +203,9 @@ const LeaveRequestSchema = z.object({
 });
 
 export const requestLeave = createJSONAction(LeaveRequestSchema, async (data) => {
-    try {
-        await hrmService.createLeaveRequest(data);
-        revalidatePath("/hrm/leave");
-        return { success: true };
-    } catch (error: any) {
-        return { error: error.message || "Failed to submit leave request" };
-    }
+    await hrmService.createLeaveRequest(data);
+    revalidatePath("/hrm/leave");
+    return { success: true };
 });
 
 export const approveLeave = async (id: string, status: 'Approved' | 'Rejected') => {
@@ -147,6 +234,35 @@ export const generateMonthlyPayroll = async (month: string, year: number) => {
         await hrmService.generatePayroll(month, year);
         revalidatePath("/hrm/payroll");
         return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const generatePayrollForEmployee = async (employeeId: string, month: string, year: number) => {
+    try {
+        const data = await hrmService.generatePayrollForEmployee(employeeId, month, year);
+        revalidatePath("/hrm/payroll");
+        return { success: true, data };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const getAllPayrollForMonth = async (month: string, year: number) => {
+    try {
+        const data = await hrmService.getAllPayrollForMonth(month, year);
+        return { success: true, data };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const markPayrollPaid = async (payrollId: string) => {
+    try {
+        const data = await hrmService.markPayrollPaid(payrollId);
+        revalidatePath("/hrm/payroll");
+        return { success: true, data };
     } catch (error: any) {
         return { success: false, error: error.message };
     }

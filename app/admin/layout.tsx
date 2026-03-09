@@ -7,6 +7,7 @@ import { LayoutDashboard, Users, Shield, Settings, ShieldCheck, AlertTriangle, S
 
 const adminLinks = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { name: 'Access Control', href: '/admin/access-control', icon: ShieldCheck },
     { name: 'Audit', href: '/admin/audit', icon: ShieldAlert },
     { name: 'ARA', href: '/admin/ara', icon: AlertTriangle },
     { name: 'Security', href: '/admin/security', icon: Shield },
@@ -25,7 +26,7 @@ export default function AdminLayout({
             <div className="flex items-center gap-6 border-b pb-4 overflow-x-auto">
                 {adminLinks.map((link) => {
                     const Icon = link.icon;
-                    const isActive = pathname === link.href;
+                    const isActive = pathname === link.href || (link.href !== '/admin' && pathname.startsWith(link.href));
                     return (
                         <Link
                             key={link.name}

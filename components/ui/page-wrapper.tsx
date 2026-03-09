@@ -7,11 +7,13 @@ interface PageWrapperProps {
     children: React.ReactNode;
     className?: string;
     delay?: number;
+    onClick?: () => void;
 }
 
-export function PageWrapper({ children, className, delay = 0 }: PageWrapperProps) {
+export function PageWrapper({ children, className, delay = 0, onClick }: PageWrapperProps) {
     return (
         <motion.div
+            onClick={onClick}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
@@ -23,9 +25,10 @@ export function PageWrapper({ children, className, delay = 0 }: PageWrapperProps
     );
 }
 
-export function CardWrapper({ children, className, delay = 0.1 }: PageWrapperProps) {
+export function CardWrapper({ children, className, delay = 0.1, onClick }: PageWrapperProps) {
     return (
         <motion.div
+            onClick={onClick}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, ease: "easeOut", delay }}

@@ -45,10 +45,10 @@ export default function CompanyMaster() {
     const handleSave = async () => {
         setLoading(true);
         const res = await updateCompany(formData);
-        if (res?.data?.success) {
+        if (res.success) {
             toast.success("Company settings saved!");
         } else {
-            toast.error(res?.data?.error || "Failed to save");
+            toast.error(res.error || "Failed to save");
         }
         setLoading(false);
     };

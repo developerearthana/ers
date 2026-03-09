@@ -94,12 +94,12 @@ export default function DepartmentsMaster() {
                 res = await createDepartment(formData);
             }
 
-            if (res?.data?.success) {
+            if (res.success) {
                 toast.success(currentDept ? "Department updated" : "Department created");
                 setIsSheetOpen(false);
                 loadData();
             } else {
-                toast.error(res?.data?.error || "Operation failed");
+                toast.error(res.error || "Operation failed");
             }
         } catch (error) {
             toast.error("An error occurred");
@@ -110,11 +110,11 @@ export default function DepartmentsMaster() {
     const handleDelete = async (id: string) => {
         if (confirm("Are you sure you want to delete this department?")) {
             const res = await deleteDepartment({ id });
-            if (res?.data?.success) {
+            if (res.success) {
                 toast.success("Department deleted");
                 loadData();
             } else {
-                toast.error(res?.data?.error || "Failed to delete");
+                toast.error(res.error || "Failed to delete");
             }
         }
     };

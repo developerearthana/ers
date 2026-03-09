@@ -3,14 +3,23 @@
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/ui/sidebar";
 import { Header } from "@/components/ui/header";
-
-
-
 import { useState } from "react";
 
-export default function AppShell({ children, userRole, userPermissions, user, company }: { children: React.ReactNode, userRole?: string | null, userPermissions?: string[], user?: any, company?: any }) {
+export default function AppShell({
+    children,
+    userRole,
+    userPermissions,
+    user,
+    company
+}: {
+    children: React.ReactNode;
+    userRole?: string | null;
+    userPermissions?: string[];
+    user?: any;
+    company?: any;
+}) {
     const pathname = usePathname();
-    const isAuthPage = pathname === "/login" || pathname === "/register";
+    const isAuthPage = pathname === "/login" || pathname === "/register" || pathname?.startsWith("/auth");
     const [isCollapsed, setIsCollapsed] = useState(false);
 
     return (
@@ -22,14 +31,18 @@ export default function AppShell({ children, userRole, userPermissions, user, co
                     isCollapsed={isCollapsed}
                     toggleCollapse={() => setIsCollapsed(!isCollapsed)}
                     company={company}
+                    user={user}
                 />
             )}
-            <div
-                className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${!isAuthPage ? (isCollapsed ? "md:pl-20" : "md:pl-72") : ""
-                    }`}
-            >
+            <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${!isAuthPage
+                    ? isCollapsed
+                        ? "md:pl-20"
+                        : "md:pl-72"
+                    : ""
+                }`}>
                 {!isAuthPage && <Header user={user} />}
-                <main className="flex-1 p-6 md:p-8 pt-6 animate-in-fade-slide">
+                {/* pt-16 on mobile to clear the hamburger button area */}
+                <main className={`flex-1 p-4 sm:p-6 md:p-8 pt-6 animate-in-fade-slide ${!isAuthPage ? "pt-16 md:pt-6" : ""}`}>
                     {children}
                 </main>
             </div>

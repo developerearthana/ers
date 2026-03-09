@@ -7,13 +7,25 @@ import { useState, useEffect } from 'react';
 import { getHRMDashboardStats } from '@/app/actions/hrm';
 import { toast } from 'sonner';
 
+import { Settings, X } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+
 export default function HRMDashboard() {
     const [stats, setStats] = useState({
         totalEmployees: 0,
         onLeaveToday: 0,
         checkedInToday: 0,
-        newJoiners: 0
+        newJoiners: 0,
+        lists: {
+            employees: [] as any[],
+            absentees: [] as any[],
+            checkedIn: [] as any[],
+            newJoiners: [] as any[]
+        }
     });
+
+    const [activeList, setActiveList] = useState<{ title: string, data: any[] } | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -53,15 +65,15 @@ export default function HRMDashboard() {
                 <p className="text-muted-foreground mt-1">Manage your workforce, attendance and payroll.</p>
             </div>
 
-            {/* Stats Grid Standardized */}
+            {/* Stats Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[
-                    { label: "Total Employees", value: stats.totalEmployees, desc: "Active Staff", icon: Users, color: "bg-muted", textColor: "text-primary", border: "border-border" },
-                    { label: "On Leave Today", value: stats.onLeaveToday, desc: "Sick / Paid Leave", icon: CalendarDays, color: "bg-muted", textColor: "text-secondary-foreground", border: "border-border" },
-                    { label: "Check-in", value: stats.checkedInToday, desc: "Present Today", icon: UserCheck, color: "bg-muted", textColor: "text-primary", border: "border-border" },
-                    { label: "New Joiners", value: stats.newJoiners, desc: "This Month", icon: ArrowUpRight, color: "bg-muted", textColor: "text-secondary-foreground", border: "border-border" },
+                    { label: "Total Employees", value: stats.totalEmployees, desc: "Active Staff", icon: Users, color: "bg-muted", textColor: "text-primary", border: "border-border", data: stats.lists.employees },
+                    { label: "Absentees", value: stats.lists.absentees.length || 0, desc: "Not Punched In", icon: CalendarDays, color: "bg-muted", textColor: "text-secondary-foreground", border: "border-border", data: stats.lists.absentees },
+                    { label: "Check-in", value: stats.checkedInToday, desc: "Present Today", icon: UserCheck, color: "bg-muted", textColor: "text-primary", border: "border-border", data: stats.lists.checkedIn },
+                    { label: "New Joiners", value: stats.newJoiners, desc: "This Month", icon: ArrowUpRight, color: "bg-muted", textColor: "text-green-500", border: "border-border", data: stats.lists.newJoiners },
                 ].map((stat, idx) => (
-                    <CardWrapper key={idx} delay={idx * 0.1} className={`glass-card p-5 rounded-xl border ${stat.border} flex flex-col justify-between h-32 hover:shadow-md transition-all`}>
+                    <CardWrapper key={idx} delay={idx * 0.1} className={`glass-card p-5 rounded-xl border ${stat.border} flex flex-col justify-between h-32 hover:shadow-lg transition-all cursor-pointer`} onClick={() => setActiveList({ title: stat.label, data: stat.data })}>
                         <div className="flex justify-between items-start">
                             <div>
                                 <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
@@ -78,6 +90,40 @@ export default function HRMDashboard() {
                     </CardWrapper>
                 ))}
             </div>
+
+            <Sheet open={!!activeList} onOpenChange={(open) => !open && setActiveList(null)}>
+                <SheetContent className="w-[400px] sm:w-[540px]">
+                    <SheetHeader>
+                        <SheetTitle>{activeList?.title}</SheetTitle>
+                        <SheetDescription>
+                            Detailed view of {activeList?.title.toLowerCase()} ({activeList?.data.length} found)
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                        {activeList?.data.length === 0 ? (
+                            <p className="text-center text-sm text-gray-500 p-4 bg-gray-50 rounded-lg">No records found.</p>
+                        ) : (
+                            activeList?.data.map((user: any, i: number) => (
+                                <div key={user._id || i} className="flex items-center gap-3 p-3 bg-white border rounded-lg shadow-sm">
+                                    <Avatar className="w-10 h-10">
+                                        <AvatarImage src={user.image} />
+                                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{user.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-bold text-sm text-gray-900">{user.name}</p>
+                                        <p className="text-xs text-gray-500">{user.email}</p>
+                                    </div>
+                                    <div className="ml-auto flex items-center gap-2">
+                                        <span className="text-[10px] uppercase font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+                                            {user.dept || 'General'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
 
             <CardWrapper delay={0.4}>
                 <AttendanceHeatmap />

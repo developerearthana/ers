@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, Layers, Users, Network, Settings, Briefcase, BarChart3, Tag } from 'lucide-react';
+import { Building2, Layers, Users, Network, Settings, Briefcase, BarChart3, Tag, Target } from 'lucide-react';
 
 export default function MastersLayout({
     children,
@@ -19,6 +19,7 @@ export default function MastersLayout({
         { name: 'KPIs', href: '/masters/kpi-metrics', icon: BarChart3 },
         { name: 'Vendors', href: '/masters/vendor-categories', icon: Tag },
         { name: 'Templates', href: '/masters/project-templates', icon: Layers },
+        { name: 'Assignments', href: '/masters/kpi-assignments', icon: Target },
     ];
 
     const pathname = usePathname();

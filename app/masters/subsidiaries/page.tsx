@@ -74,11 +74,11 @@ export default function SubsidiariesMaster() {
     const handleDelete = async (id: string) => {
         if (confirm("Are you sure you want to delete this subsidiary? This action cannot be undone.")) {
             const res = await deleteSubsidiary({ id });
-            if (res?.data?.success) {
+            if (res.success) {
                 toast.success("Subsidiary deleted");
                 loadSubsidiaries();
             } else {
-                toast.error(res?.data?.error || "Failed to delete");
+                toast.error(res.error || "Failed to delete");
             }
         }
     }
@@ -97,12 +97,12 @@ export default function SubsidiariesMaster() {
                 res = await createSubsidiary(formData);
             }
 
-            if (res?.data?.success) {
+            if (res.success) {
                 toast.success(currentSub ? "Subsidiary updated" : "Subsidiary created");
                 setIsSheetOpen(false);
                 loadSubsidiaries();
             } else {
-                toast.error(res?.data?.error || "Operation failed");
+                toast.error(res.error || "Operation failed");
             }
         } catch (error) {
             toast.error("An error occurred");

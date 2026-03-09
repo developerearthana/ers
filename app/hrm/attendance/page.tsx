@@ -1,27 +1,83 @@
 "use client";
 
-import { useState } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Edit3, FileText, Download, Filter } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Edit3, FileText, Download, Filter, Loader2 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths } from 'date-fns';
 import { PageWrapper, CardWrapper } from '@/components/ui/page-wrapper';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSession } from 'next-auth/react';
+import { getAttendance, punchIn, punchOut } from '@/app/actions/hrm';
+import { toast } from 'sonner';
 
 export default function AttendancePage() {
+    const { data: session } = useSession();
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [isLoading, setIsLoading] = useState(true);
+    const [isPunchLoading, setIsPunchLoading] = useState(false); // action in-progress
     const [isPunchedIn, setIsPunchedIn] = useState(false);
     const [punchInTime, setPunchInTime] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'calendar' | 'reports'>('calendar');
-    const [isAdminMode, setIsAdminMode] = useState(false);
+    const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
 
-    const handlePunch = () => {
-        if (!isPunchedIn) {
-            setPunchInTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-            setIsPunchedIn(true);
-        } else {
-            setIsPunchedIn(false);
-            setPunchInTime(null);
+    // Load on mount AND whenever month changes.
+    // Don't gate on session.user.id — the server action reads session itself.
+    useEffect(() => {
+        loadAttendance();
+    }, [currentDate]);
+
+    const loadAttendance = async () => {
+        setIsLoading(true);
+        try {
+            const res = await getAttendance(undefined, currentDate.getMonth(), currentDate.getFullYear());
+            if (res.success) {
+                setAttendanceRecords(res.data);
+                // Check if already punched in today
+                const todayRecord = res.data.find((r: any) => isToday(new Date(r.date)));
+                if (todayRecord && todayRecord.punchIn && !todayRecord.punchOut) {
+                    setIsPunchedIn(true);
+                    setPunchInTime(format(new Date(todayRecord.punchIn), 'HH:mm'));
+                } else {
+                    setIsPunchedIn(false);
+                    setPunchInTime(null);
+                }
+            }
+        } catch (error) {
+            toast.error("Failed to load attendance");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handlePunch = async () => {
+        setIsPunchLoading(true);
+        try {
+            if (!isPunchedIn) {
+                const res = await punchIn();
+                if (res.success) {
+                    setIsPunchedIn(true);
+                    setPunchInTime(format(new Date(res.data.punchIn), 'HH:mm'));
+                    toast.success('Punched in successfully ✅');
+                    loadAttendance();
+                } else {
+                    toast.error(res.error || 'Punch in failed');
+                }
+            } else {
+                const res = await punchOut();
+                if (res.success) {
+                    setIsPunchedIn(false);
+                    setPunchInTime(null);
+                    toast.success('Punched out successfully');
+                    loadAttendance();
+                } else {
+                    toast.error(res.error || 'Punch out failed');
+                }
+            }
+        } catch (error) {
+            toast.error('An error occurred');
+        } finally {
+            setIsPunchLoading(false);
         }
     };
 
@@ -29,18 +85,19 @@ export default function AttendancePage() {
     const monthEnd = endOfMonth(currentDate);
     const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
+    // Format attendance records for fast lookup
+    const attendanceMap = attendanceRecords.reduce((acc: any, rec: any) => {
+        const key = format(new Date(rec.date), 'yyyy-MM-dd');
+        acc[key] = rec;
+        return acc;
+    }, {});
+
     // Mock Calendar Data
     const calendarEvents: Record<string, { type: string, color: string }> = {
         '2026-01-01': { type: 'Holiday', color: 'bg-red-100 text-red-600 border-red-200' },
         '2026-01-26': { type: 'Holiday', color: 'bg-red-100 text-red-600 border-red-200' },
-        '2026-01-15': { type: 'Leave', color: 'bg-yellow-100 text-yellow-600 border-yellow-200' },
     };
 
-    const attendanceData: Record<string, { status: string, in: string, out: string }> = {
-        '2026-01-02': { status: 'Present', in: '09:00', out: '18:00' },
-        '2026-01-05': { status: 'Present', in: '09:15', out: '18:10' },
-        '2026-01-06': { status: 'WFH', in: '08:50', out: '17:50' },
-    };
 
     return (
         <PageWrapper className="space-y-6 max-w-7xl mx-auto p-4">
@@ -87,19 +144,31 @@ export default function AttendancePage() {
 
                         <div className="my-10 flex justify-center">
                             <motion.button
-                                whileTap={{ scale: 0.95 }}
-                                whileHover={{ scale: 1.05 }}
+                                whileTap={isLoading || isPunchLoading ? {} : { scale: 0.95 }}
+                                whileHover={isLoading || isPunchLoading ? {} : { scale: 1.05 }}
                                 onClick={handlePunch}
+                                disabled={isLoading || isPunchLoading}
                                 className={cn(
                                     "w-48 h-48 rounded-full border-[6px] flex flex-col items-center justify-center transition-all shadow-2xl relative group",
-                                    isPunchedIn
-                                        ? "border-red-100 bg-gradient-to-br from-red-50 to-red-100 text-red-600 shadow-red-500/20"
-                                        : "border-emerald-100 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-600 shadow-emerald-500/20"
+                                    isLoading || isPunchLoading
+                                        ? "border-gray-200 bg-gray-50 text-gray-400 cursor-wait shadow-gray-100"
+                                        : isPunchedIn
+                                            ? "border-red-100 bg-gradient-to-br from-red-50 to-red-100 text-red-600 shadow-red-500/20"
+                                            : "border-emerald-100 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-600 shadow-emerald-500/20"
                                 )}
                             >
                                 <span className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
-                                <span className="text-4xl font-black mb-1 tracking-wider">{isPunchedIn ? 'STOP' : 'START'}</span>
-                                <span className="text-xs uppercase font-bold tracking-[0.2em] opacity-80">{isPunchedIn ? 'Punch Out' : 'Punch In'}</span>
+                                {isLoading || isPunchLoading ? (
+                                    <>
+                                        <Loader2 className="w-10 h-10 animate-spin mb-1" />
+                                        <span className="text-xs uppercase font-bold tracking-[0.2em] opacity-60">Loading…</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-4xl font-black mb-1 tracking-wider">{isPunchedIn ? 'STOP' : 'START'}</span>
+                                        <span className="text-xs uppercase font-bold tracking-[0.2em] opacity-80">{isPunchedIn ? 'Punch Out' : 'Punch In'}</span>
+                                    </>
+                                )}
                             </motion.button>
                         </div>
 
@@ -152,7 +221,7 @@ export default function AttendancePage() {
                         {calendarDays.map((day) => {
                             const dateStr = format(day, 'yyyy-MM-dd');
                             const event = calendarEvents[dateStr];
-                            const attendance = attendanceData[dateStr];
+                            const attendance = attendanceMap[dateStr];
                             const isCurrentDay = isToday(day);
 
                             return (
@@ -175,10 +244,11 @@ export default function AttendancePage() {
                                         {attendance && (
                                             <div className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium truncate flex justify-between",
                                                 attendance.status === 'Present' ? "bg-emerald-100 text-emerald-700" :
-                                                    attendance.status === 'WFH' ? "bg-purple-100 text-purple-700" : "bg-white"
+                                                    attendance.status === 'WFH' ? "bg-purple-100 text-purple-700" :
+                                                        attendance.status === 'Absent' ? "bg-red-50 text-red-700" : "bg-white"
                                             )}>
-                                                <span>{attendance.status === 'Present' ? 'P' : 'WFH'}</span>
-                                                <span className="opacity-70">{attendance.in}</span>
+                                                <span>{attendance.status === 'Present' ? 'P' : attendance.status === 'WFH' ? 'WFH' : 'A'}</span>
+                                                {attendance.punchIn && <span className="opacity-70">{format(new Date(attendance.punchIn), 'HH:mm')}</span>}
                                             </div>
                                         )}
                                     </div>

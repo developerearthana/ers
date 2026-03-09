@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react';
 import { authenticate } from '@/app/actions/auth-login';
-import { Leaf } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 
 export default function LoginPage() {
     const [errorMessage, dispatch, isPending] = useActionState(authenticate, undefined);
@@ -11,11 +11,10 @@ export default function LoginPage() {
         <div className="flex min-h-screen items-center justify-center bg-background p-4">
             <div className="w-full max-w-md space-y-8 p-8 glass-card rounded-xl border border-border shadow-2xl">
                 <div className="text-center">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                        <Leaf className="w-7 h-7 text-primary" />
-                        <h2 className="text-3xl font-bold tracking-tight text-primary">Earthana</h2>
+                    <div className="flex flex-col items-center justify-center gap-4 mb-8 w-full">
+                        <Logo variant="full" className="h-20 sm:h-24 w-full max-w-[300px]" />
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">Sign in to your ERP account</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Sign in to your organization's portal</p>
                 </div>
 
                 <form className="mt-8 space-y-5" action={dispatch}>

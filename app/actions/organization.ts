@@ -80,67 +80,42 @@ export const getSubsidiaries = async () => {
 };
 
 export const createSubsidiary = createJSONAction(SubsidiarySchema, async (data) => {
-    try {
-        await connectToDatabase();
-        const mainCompany = await Company.findOne();
-        if (!mainCompany) throw new Error("Main company not found");
+    await connectToDatabase();
+    const mainCompany = await Company.findOne();
+    if (!mainCompany) throw new Error("Main company not found");
 
-        const newSub = await Subsidiary.create({
-            companyId: mainCompany._id,
-            name: data.name,
-            location: data.location,
-            address: data.address,
-            contactNumber: data.contactNumber,
-            headOfOperation: data.headOfOperation,
-            description: data.description,
-            logo: data.logo
-        });
+    const newSub = await Subsidiary.create({
+        companyId: mainCompany._id,
+        name: data.name,
+        location: data.location,
+        address: data.address,
+        contactNumber: data.contactNumber,
+        headOfOperation: data.headOfOperation,
+        description: data.description,
+        logo: data.logo
+    });
 
-        revalidatePath("/masters/subsidiaries");
-        return { success: true, subsidiary: JSON.parse(JSON.stringify(newSub)) };
-    } catch (error: any) {
-        return { error: error.message };
-    }
+    revalidatePath("/masters/subsidiaries");
+    return { success: true, subsidiary: JSON.parse(JSON.stringify(newSub)) };
 });
 
 export const updateSubsidiary = createJSONAction(SubsidiarySchema, async (data) => {
-    try {
-        await connectToDatabase();
-        if (!data.id) throw new Error("ID required for update");
-
-        const sub = await Subsidiary.findByIdAndUpdate(
-            data.id,
-            {
-                name: data.name,
-                location: data.location,
-                address: data.address,
-                contactNumber: data.contactNumber,
-                headOfOperation: data.headOfOperation,
-                description: data.description,
-                logo: data.logo
-            },
-            { new: true }
-        );
-
-        revalidatePath("/masters/subsidiaries");
-        return { success: true, subsidiary: JSON.parse(JSON.stringify(sub)) };
-    } catch (error: any) {
-        return { error: error.message };
-    }
+    await connectToDatabase();
+    if (!data.id) throw new Error("ID required for update");
+    const sub = await Subsidiary.findByIdAndUpdate(
+        data.id,
+        { name: data.name, location: data.location, address: data.address, contactNumber: data.contactNumber, headOfOperation: data.headOfOperation, description: data.description, logo: data.logo },
+        { new: true }
+    );
+    revalidatePath("/masters/subsidiaries");
+    return { success: true, subsidiary: JSON.parse(JSON.stringify(sub)) };
 });
 export const deleteSubsidiary = createJSONAction(z.object({ id: z.string() }), async (data) => {
-    try {
-        await connectToDatabase();
-        if (!data.id) throw new Error("ID required for deletion");
-
-        // Optional: Check for dependencies (departments, teams) before deleting
-        await Subsidiary.findByIdAndDelete(data.id);
-
-        revalidatePath("/masters/subsidiaries");
-        return { success: true };
-    } catch (error: any) {
-        return { error: error.message || "Failed to delete subsidiary" };
-    }
+    await connectToDatabase();
+    if (!data.id) throw new Error("ID required for deletion");
+    await Subsidiary.findByIdAndDelete(data.id);
+    revalidatePath("/masters/subsidiaries");
+    return { success: true };
 });
 
 // --- Department Actions ---
@@ -161,58 +136,38 @@ export const getDepartments = async () => {
 };
 
 export const createDepartment = createJSONAction(DepartmentSchema, async (data) => {
-    try {
-        await connectToDatabase();
+    await connectToDatabase();
+    const newDept = await Department.create({
+        subsidiaryId: data.subsidiaryId,
+        name: data.name,
+        code: data.code,
+        headOfDepartment: data.headOfDepartment,
+    });
 
-        const newDept = await Department.create({
-            subsidiaryId: data.subsidiaryId,
-            name: data.name,
-            code: data.code,
-            headOfDepartment: data.headOfDepartment,
-        });
-
-        revalidatePath("/masters/departments");
-        return { success: true, department: JSON.parse(JSON.stringify(newDept)) };
-    } catch (error: any) {
-        return { error: error.message };
-    }
+    revalidatePath("/masters/departments");
+    return { success: true, department: JSON.parse(JSON.stringify(newDept)) };
 });
 
 export const updateDepartment = createJSONAction(DepartmentSchema, async (data) => {
-    try {
-        await connectToDatabase();
-        if (!data.id) throw new Error("ID required for update");
-
-        const dept = await Department.findByIdAndUpdate(
-            data.id,
-            {
-                subsidiaryId: data.subsidiaryId,
-                name: data.name,
-                code: data.code,
-                headOfDepartment: data.headOfDepartment,
-            },
-            { new: true }
-        );
-
-        revalidatePath("/masters/departments");
-        return { success: true, department: JSON.parse(JSON.stringify(dept)) };
-    } catch (error: any) {
-        return { error: error.message };
-    }
+    await connectToDatabase();
+    if (!data.id) throw new Error("ID required for update");
+    const dept = await Department.findByIdAndUpdate(
+        data.id,
+        { subsidiaryId: data.subsidiaryId, name: data.name, code: data.code, headOfDepartment: data.headOfDepartment },
+        { new: true }
+    );
+    revalidatePath("/masters/departments");
+    return { success: true, department: JSON.parse(JSON.stringify(dept)) };
 });
 
 export const deleteDepartment = createJSONAction(z.object({ id: z.string() }), async (data) => {
-    try {
-        await connectToDatabase();
-        if (!data.id) throw new Error("ID required for deletion");
+    await connectToDatabase();
+    if (!data.id) throw new Error("ID required for deletion");
 
-        await Department.findByIdAndDelete(data.id);
+    await Department.findByIdAndDelete(data.id);
 
-        revalidatePath("/masters/departments");
-        return { success: true };
-    } catch (error: any) {
-        return { error: error.message || "Failed to delete department" };
-    }
+    revalidatePath("/masters/departments");
+    return { success: true };
 });
 
 // --- Team Actions ---
@@ -235,56 +190,34 @@ export const getTeams = async () => {
 };
 
 export const createTeam = createJSONAction(TeamSchema, async (data) => {
-    try {
-        await connectToDatabase();
-
-        const newTeam = await Team.create({
-            name: data.name,
-            teamLead: data.teamLead || undefined,
-            members: data.members || []
-        });
-
-        revalidatePath("/masters/teams");
-        return { success: true, team: JSON.parse(JSON.stringify(newTeam)) };
-    } catch (error: any) {
-        return { error: error.message };
-    }
+    await connectToDatabase();
+    const newTeam = await Team.create({
+        name: data.name,
+        teamLead: data.teamLead || undefined,
+        members: data.members || []
+    });
+    revalidatePath("/masters/teams");
+    return { success: true, team: JSON.parse(JSON.stringify(newTeam)) };
 });
 
 export const updateTeam = createJSONAction(TeamSchema, async (data) => {
-    try {
-        await connectToDatabase();
-        if (!data.id) throw new Error("ID required for update");
-
-        const team = await Team.findByIdAndUpdate(
-            data.id,
-            {
-                name: data.name,
-                teamLead: data.teamLead || undefined,
-                members: data.members || []
-            },
-            { new: true }
-        );
-
-        revalidatePath("/masters/teams");
-        return { success: true, team: JSON.parse(JSON.stringify(team)) };
-    } catch (error: any) {
-        return { error: error.message };
-    }
+    await connectToDatabase();
+    if (!data.id) throw new Error("ID required for update");
+    const team = await Team.findByIdAndUpdate(
+        data.id,
+        { name: data.name, teamLead: data.teamLead || undefined, members: data.members || [] },
+        { new: true }
+    );
+    revalidatePath("/masters/teams");
+    return { success: true, team: JSON.parse(JSON.stringify(team)) };
 });
 
 export const deleteTeam = createJSONAction(z.object({ id: z.string() }), async (data) => {
-    try {
-        await connectToDatabase();
-        if (!data.id) throw new Error("ID required for deletion");
-
-        await Team.findByIdAndDelete(data.id);
-
-        revalidatePath("/masters/teams");
-        return { success: true };
-    } catch (error: any) {
-        return { error: error.message || "Failed to delete team" };
-    }
+    await connectToDatabase();
+    if (!data.id) throw new Error("ID required for deletion");
+    await Team.findByIdAndDelete(data.id);
+    revalidatePath("/masters/teams");
+    return { success: true };
 });
 
 export const seedDefaults = async () => {

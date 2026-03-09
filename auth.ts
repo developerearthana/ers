@@ -45,8 +45,8 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
                     } catch (e) { /* ignore */ }
                 } else {
                     if (user.role === 'admin' || user.role === 'super-admin') permissions = ['*'];
-                    else if (user.role === 'manager') permissions = ['dashboard', 'sales', 'marketing', 'contacts', 'activity', 'goals'];
-                    else if (user.role === 'staff') permissions = ['dashboard', 'activity', 'contacts'];
+                    else if (user.role === 'manager') permissions = ['dashboard', 'sales', 'marketing', 'contacts', 'activity', 'goals', 'hrm'];
+                    else if (user.role === 'staff' || user.role === 'user') permissions = ['dashboard', 'activity', 'contacts', 'hrm'];
                     else if (user.role === 'vendor') permissions = ['dashboard', 'purchase', 'vendor-dash'];
                     else if (user.role === 'customer') permissions = ['projects', 'customer-dash'];
                 }

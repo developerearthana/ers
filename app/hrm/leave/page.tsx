@@ -6,7 +6,7 @@ import { LeaveCalendar } from '@/components/hrm/LeaveCalendar';
 import { Progress } from '@/components/ui/progress';
 import { Search, Filter, Check, X, AlertCircle, Plus, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { getLeaves, requestLeave, approveLeave } from '@/app/actions/hrm';
+import { getLeaves, requestLeave, approveLeave, getAbsentees } from '@/app/actions/hrm';
 import { toast } from 'sonner';
 
 interface LeaveRequest {
@@ -22,10 +22,18 @@ interface LeaveRequest {
     approverId?: string;
 }
 
+import { useSession } from 'next-auth/react';
+
 export default function LeaveManagementPage() {
-    const [activeTab, setActiveTab] = useState<'requests' | 'calendar' | 'absentees'>('calendar');
+    const { data: session } = useSession();
+    const userRole = session?.user?.role?.toLowerCase() || '';
+    const isAdminOrHR = userRole.includes('admin') || userRole.includes('manager') || userRole.includes('hr');
+    // Staff default to "requests" so they immediately see their own leaves + statuses
+    const [activeTab, setActiveTab] = useState<'requests' | 'calendar' | 'absentees'>(isAdminOrHR ? 'calendar' : 'requests');
+
     const [showForm, setShowForm] = useState(false);
     const [requests, setRequests] = useState<LeaveRequest[]>([]);
+    const [absentees, setAbsentees] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Form State
@@ -43,12 +51,19 @@ export default function LeaveManagementPage() {
 
     const loadLeaves = async () => {
         try {
-            const res = await getLeaves();
-            if (res.success && res.data) {
-                setRequests(res.data);
+            const [leavesRes, absenteesRes] = await Promise.all([
+                getLeaves(),
+                getAbsentees()
+            ]);
+
+            if (leavesRes.success && leavesRes.data) {
+                setRequests(leavesRes.data);
+            }
+            if (absenteesRes.success && absenteesRes.data) {
+                setAbsentees(absenteesRes.data);
             }
         } catch (error) {
-            toast.error("Failed to load leave requests");
+            toast.error("Failed to load data");
         } finally {
             setLoading(false);
         }
@@ -60,21 +75,22 @@ export default function LeaveManagementPage() {
             return;
         }
 
-        setSubmitting(true);
-        // Mock User Data (In real app, get from session)
-        const mockUser = {
-            userId: "65a123f4c6e75a0012345678", // Example ObjectId
-            userName: "Current User"
-        };
+        if (!session?.user?.id) {
+            toast.error("You must be logged in");
+            return;
+        }
 
+        setSubmitting(true);
         try {
             const res = await requestLeave({
-                ...mockUser,
+                userId: session.user.id,
+                userName: session.user.name || "Unknown User",
                 type: newLeave.type as any,
                 startDate: newLeave.startDate,
                 endDate: newLeave.endDate,
                 reason: newLeave.reason
             });
+
 
             if (res.success) {
                 toast.success("Leave requested successfully");
@@ -126,8 +142,8 @@ export default function LeaveManagementPage() {
         <PageWrapper className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Leave Management</h1>
-                    <p className="text-gray-500">Manage leave requests, balance, and calendar.</p>
+                    <h1 className="text-2xl font-bold text-foreground">Leave Management</h1>
+                    <p className="text-muted-foreground">Manage leave requests, balance, and calendar.</p>
                 </div>
                 <div className="flex gap-2 bg-white p-1 rounded-lg">
                     {['calendar', 'requests', 'absentees'].map((tab) => (
@@ -181,34 +197,36 @@ export default function LeaveManagementPage() {
                                     </div>
                                 ))}
                             </div>
-                            <button onClick={() => setShowForm(true)} className="w-full mt-6 bg-white text-white py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all">
+                            <button onClick={() => setShowForm(true)} className="w-full mt-6 bg-primary text-white py-2 rounded-lg text-sm font-semibold shadow-lg hover:bg-primary/90 transition-all">
                                 + Apply Leave
                             </button>
                         </CardWrapper>
 
                         {/* Approvals Widget */}
-                        <CardWrapper delay={0.2} className="glass-card p-6 rounded-xl border border-gray-100 flex-1 overflow-auto">
-                            <h4 className="font-bold text-gray-900 mb-4">Pending Approvals</h4>
-                            <div className="space-y-3">
-                                {pendingRequests.length === 0 ? (
-                                    <p className="text-sm text-gray-400 text-center py-4">No pending requests</p>
-                                ) : (
-                                    pendingRequests.map(req => (
-                                        <div key={req._id} className="p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <span className="text-sm font-bold text-gray-900">{req.userName}</span>
-                                                <span className="text-xs bg-white px-2 py-0.5 rounded text-gray-600">{req.type}</span>
+                        {isAdminOrHR && (
+                            <CardWrapper delay={0.2} className="glass-card p-6 rounded-xl border border-gray-100 flex-1 overflow-auto">
+                                <h4 className="font-bold text-gray-900 mb-4">Pending Approvals</h4>
+                                <div className="space-y-3">
+                                    {pendingRequests.length === 0 ? (
+                                        <p className="text-sm text-gray-400 text-center py-4">No pending requests</p>
+                                    ) : (
+                                        pendingRequests.map(req => (
+                                            <div key={req._id} className="p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className="text-sm font-bold text-gray-900">{req.userName}</span>
+                                                    <span className="text-xs bg-white px-2 py-0.5 rounded text-gray-600">{req.type}</span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mb-3">{format(new Date(req.startDate), 'dd MMM')} - {format(new Date(req.endDate), 'dd MMM')}</p>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => handleAction(req._id, 'Approved')} className="flex-1 py-1 bg-emerald-50 text-green-700 text-xs font-bold rounded hover:bg-green-100">Approve</button>
+                                                    <button onClick={() => handleAction(req._id, 'Rejected')} className="flex-1 py-1 bg-red-50 text-red-700 text-xs font-bold rounded hover:bg-red-100">Reject</button>
+                                                </div>
                                             </div>
-                                            <p className="text-xs text-gray-500 mb-3">{format(new Date(req.startDate), 'dd MMM')} - {format(new Date(req.endDate), 'dd MMM')}</p>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleAction(req._id, 'Approved')} className="flex-1 py-1 bg-white text-green-700 text-xs font-bold rounded hover:bg-green-100">Approve</button>
-                                                <button onClick={() => handleAction(req._id, 'Rejected')} className="flex-1 py-1 bg-red-50 text-red-700 text-xs font-bold rounded hover:bg-red-100">Reject</button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </CardWrapper>
+                                        ))
+                                    )}
+                                </div>
+                            </CardWrapper>
+                        )}
                     </div>
                 </div>
             )}
@@ -225,7 +243,7 @@ export default function LeaveManagementPage() {
                                 <Filter className="w-4 h-4" /> Filter
                             </button>
                         </div>
-                        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-white text-white px-4 py-2 rounded-lg hover:bg-white text-sm">
+                        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 text-sm font-semibold transition-colors">
                             <Plus className="w-4 h-4" /> New Request
                         </button>
                     </div>
@@ -252,19 +270,28 @@ export default function LeaveManagementPage() {
                                     </div>
 
                                     {req.status === 'Pending' ? (
-                                        <div className="flex gap-2">
-                                            <button aria-label="Approve Request" onClick={() => handleAction(req._id, 'Approved')} className="p-2 text-green-600 hover:bg-white rounded-full transition-colors" title="Approve">
-                                                <Check className="w-5 h-5" />
-                                            </button>
-                                            <button aria-label="Reject Request" onClick={() => handleAction(req._id, 'Rejected')} className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors" title="Reject">
-                                                <X className="w-5 h-5" />
-                                            </button>
-                                        </div>
+                                        isAdminOrHR ? (
+                                            <div className="flex gap-2">
+                                                <button aria-label="Approve Request" onClick={() => handleAction(req._id, 'Approved')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors" title="Approve">
+                                                    <Check className="w-4 h-4" /> Accept
+                                                </button>
+                                                <button aria-label="Reject Request" onClick={() => handleAction(req._id, 'Rejected')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-lg transition-colors" title="Reject">
+                                                    <X className="w-4 h-4" /> Decline
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <span className="px-3 py-1.5 rounded-full text-xs font-bold border bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1.5">
+                                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
+                                                Awaiting Approval
+                                            </span>
+                                        )
+                                    ) : req.status === 'Approved' ? (
+                                        <span className="px-3 py-1.5 rounded-full text-xs font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1.5">
+                                            <Check className="w-3.5 h-3.5" /> Approved
+                                        </span>
                                     ) : (
-                                        <span className={`px-3 py-1 rounded-full text-xs font-medium border
-                                            ${req.status === 'Approved' ? 'bg-white text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}
-                                         `}>
-                                            {req.status}
+                                        <span className="px-3 py-1.5 rounded-full text-xs font-bold border bg-red-50 text-red-700 border-red-200 flex items-center gap-1.5">
+                                            <X className="w-3.5 h-3.5" /> Declined
                                         </span>
                                     )}
                                 </div>
@@ -280,10 +307,32 @@ export default function LeaveManagementPage() {
                         <AlertCircle className="w-5 h-5" />
                         <span className="font-semibold">Absentees Today ({format(new Date(), 'dd MMM yyyy')})</span>
                     </div>
-                    {/* Placeholder for absentees, or we can filter requests for today */}
-                    <div className="p-4 text-center text-gray-500">
-                        No absentees data linked yet.
-                    </div>
+                    {absentees.length === 0 ? (
+                        <div className="p-10 text-center text-gray-500 bg-white">
+                            <Check className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
+                            <p className="font-medium text-gray-900">Everyone is present today!</p>
+                            <p className="text-sm mt-1">No absentees recorded.</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-100 bg-white">
+                            {absentees.map((absentee, index) => (
+                                <div key={index} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center justify-center">
+                                            {absentee.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-gray-900">{absentee.name}</p>
+                                            <p className="text-sm text-gray-500">{absentee.dept} • {absentee.role}</p>
+                                        </div>
+                                    </div>
+                                    <div className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-xs font-medium border border-red-100">
+                                        Absent
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </CardWrapper>
             )}
 

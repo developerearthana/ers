@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Building2, Layers, Users, Network, Briefcase, ArrowRight, Tag, BarChart3, LayoutGrid, Grid2X2 } from 'lucide-react';
+import { Building2, Layers, Users, Network, Briefcase, ArrowRight, Tag, BarChart3, LayoutGrid, Grid2X2, CheckSquare } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MastersDashboard() {
@@ -13,6 +13,7 @@ export default function MastersDashboard() {
         { name: 'Users', desc: 'Manage access & roles', href: '/masters/users', icon: Users, color: 'text-pink-600', bg: 'bg-white' },
         { name: 'Vendor Categories', desc: 'Classify vendor types', href: '/masters/vendor-categories', icon: Tag, color: 'text-indigo-600', bg: 'bg-indigo-100' },
         { name: 'KPI Metrics', desc: 'Define performance indicators', href: '/masters/kpi-metrics', icon: BarChart3, color: 'text-teal-600', bg: 'bg-teal-100' },
+        { name: 'KPI Assignment', desc: 'Assign goals to teams & users', href: '/masters/kpi-assignments', icon: CheckSquare, color: 'text-rose-600', bg: 'bg-rose-100' },
         { name: 'Project Templates', desc: 'Configure stage workflows', href: '/masters/project-templates', icon: Layers, color: 'text-indigo-600', bg: 'bg-indigo-100' },
     ];
 

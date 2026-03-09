@@ -47,6 +47,11 @@ const PayrollSchema: Schema = new Schema(
         },
         netPay: { type: Number, default: 0 },
         paymentDate: { type: Date },
+        attendanceSummary: {
+            presentDays: { type: Number, default: 0 },
+            absentDays: { type: Number, default: 0 },
+            workedHours: { type: Number, default: 0 },
+        },
     },
     { timestamps: true }
 );

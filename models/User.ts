@@ -4,6 +4,7 @@ export interface IUser extends Document {
     name: string;
     email: string;
     password?: string;
+    phone?: string;
     image?: string;
     role: 'user' | 'admin' | 'vendor' | 'customer' | 'super-admin' | 'manager' | 'staff';
     provider: 'credentials' | 'google';
@@ -27,6 +28,7 @@ const UserSchema: Schema = new Schema(
         name: { type: String, required: true },
         email: { type: String, required: true, unique: true },
         password: { type: String, select: false },
+        phone: { type: String },
         image: { type: String },
         role: { type: String, enum: ['user', 'admin', 'vendor', 'customer', 'super-admin', 'manager', 'staff'], default: 'user' }, // Flexible role for UI
         dept: { type: String, default: 'General' },

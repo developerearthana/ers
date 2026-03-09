@@ -56,13 +56,15 @@ export async function getDashboardUsers() {
 export async function getAllUsers() {
     await connectToDatabase();
     const users = await User.find({})
-        .select('name role dept image jobTitle email status')
+        .select('name role dept image jobTitle email status phone')
         .sort({ name: 1 })
         .lean();
     return JSON.parse(JSON.stringify(users));
 }
 
-// --- CRUD Actions ---
+import bcrypt from "bcryptjs";
+
+// ... CRUD Actions ...
 
 const UserSchema = z.object({
     id: z.string().optional(),
@@ -70,80 +72,69 @@ const UserSchema = z.object({
     email: z.string().email("Invalid email address"),
     role: z.string().min(1, "Role is required"),
     dept: z.string().optional(),
+    phone: z.string().optional(),
     jobTitle: z.string().optional(),
     status: z.enum(['Active', 'Inactive', 'On Leave']).default('Active'),
-    password: z.string().optional().or(z.literal('')), // Optional for update
+    password: z.string().optional().or(z.literal('')),
     customRole: z.string().optional(),
 });
 
 
 export const createUser = createJSONAction(UserSchema, async (data) => {
-    try {
-        await connectToDatabase();
+    await connectToDatabase();
 
-        // Simple manual check for existing email
-        const existing = await User.findOne({ email: data.email });
-        if (existing) return { error: "Email already exists" };
+    const existing = await User.findOne({ email: data.email });
+    if (existing) throw new Error("Email already exists");
 
-        const newUser = await User.create({
-            name: data.name,
-            email: data.email,
-            password: data.password || 'password123', // Default password
-            role: data.role,
-            dept: data.dept || 'General',
-            jobTitle: data.jobTitle,
-            status: data.status,
-            provider: 'credentials',
-            customRole: data.customRole || undefined
-        });
+    const rawPassword = data.password || 'password123';
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
-        revalidatePath("/masters/users");
-        return { success: true, user: JSON.parse(JSON.stringify(newUser)) };
-    } catch (error: any) {
-        return { error: error.message };
-    }
+    const newUser = await User.create({
+        name: data.name,
+        email: data.email,
+        password: hashedPassword,
+        role: data.role,
+        dept: data.dept || 'General',
+        jobTitle: data.jobTitle,
+        status: data.status,
+        provider: 'credentials',
+        customRole: data.customRole || undefined
+    });
+
+    revalidatePath("/masters/users");
+    return { success: true, user: JSON.parse(JSON.stringify(newUser)) };
 });
 
 export const updateUser = createJSONAction(UserSchema, async (data) => {
-    try {
-        await connectToDatabase();
-        if (!data.id) throw new Error("ID required for update");
+    await connectToDatabase();
+    if (!data.id) throw new Error("ID required for update");
 
-        const updateData: any = {
-            name: data.name,
-            email: data.email,
-            role: data.role,
-            dept: data.dept,
-            jobTitle: data.jobTitle,
-            status: data.status,
-            customRole: data.customRole || undefined,
-        };
-        // Only update password if provided
-        if (data.password) {
-            updateData.password = data.password;
-        }
-
-        const user = await User.findByIdAndUpdate(data.id, updateData, { new: true });
-
-        revalidatePath("/masters/users");
-        return { success: true, user: JSON.parse(JSON.stringify(user)) };
-    } catch (error: any) {
-        return { error: error.message };
+    const updateData: any = {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        dept: data.dept,
+        phone: data.phone,
+        jobTitle: data.jobTitle,
+        status: data.status,
+        customRole: data.customRole || undefined,
+    };
+    if (data.password) {
+        updateData.password = await bcrypt.hash(data.password, 10);
     }
+
+    const user = await User.findByIdAndUpdate(data.id, updateData, { new: true });
+    revalidatePath("/masters/users");
+    revalidatePath("/hrm/employees");
+    return { success: true, user: JSON.parse(JSON.stringify(user)) };
 });
 
 export const deleteUser = createJSONAction(z.object({ id: z.string() }), async (data) => {
-    try {
-        await connectToDatabase();
-        if (!data.id) throw new Error("ID required for deletion");
-
-        await User.findByIdAndDelete(data.id);
-
-        revalidatePath("/masters/users");
-        return { success: true };
-    } catch (error: any) {
-        return { error: error.message || "Failed to delete user" };
-    }
+    await connectToDatabase();
+    if (!data.id) throw new Error("ID required for deletion");
+    await User.findByIdAndDelete(data.id);
+    revalidatePath("/masters/users");
+    return { success: true };
 });
 
 export const toggleUserStatus = async (id: string, currentStatus: string) => {
