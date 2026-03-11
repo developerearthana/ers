@@ -8,6 +8,7 @@ import {
     CalendarDays, Briefcase, ClipboardList, Shield,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 
 const ALL_HRM_LINKS = [
     { name: 'Dashboard', href: '/hrm', icon: LayoutDashboard, adminOnly: true },
@@ -29,24 +30,24 @@ function isAdminRole(role: string) {
     return r === 'admin' || r === 'super-admin' || r === 'manager' || r === 'hr';
 }
 
-export default function HRMLayoutClient({ children, role }: { children: React.ReactNode, role: string }) {
+export default function HRMLayoutClient({ children, role: initialRole }: { children: React.ReactNode, role: string }) {
     const pathname = usePathname();
     const router = useRouter();
+    const { data: session } = useSession();
     
-    // We get role straight from the Server Component via props! 
-    // This is 100% reliable and doesn't rely on `useSession()` cache keeping the role.
-    const confirmedAdmin = isAdminRole(role);
-    const confirmedStaff = role ? !isAdminRole(role) : false;
+    // Combine Server Prop with Client Session to ensure it updates during soft nav
+    const currentRole = session?.user?.role || initialRole;
+    
+    const confirmedAdmin = isAdminRole(currentRole);
+    const confirmedStaff = currentRole ? !isAdminRole(currentRole) : false;
 
-    // Optional: add a tiny mounted delay to avoid hydration mismatch if needed,
-    // though passing role from server means it matches immediately.
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
 
     // ── Staff redirect guard ──────────────────
     useEffect(() => {
-        if (!role) return;
-        if (isAdminRole(role)) return;
+        if (!currentRole) return;
+        if (isAdminRole(currentRole)) return;
 
         const allowed = STAFF_ALLOWED.some(
             p => pathname === p || pathname.startsWith(p + '/')
@@ -54,13 +55,18 @@ export default function HRMLayoutClient({ children, role }: { children: React.Re
         if (!allowed) {
             router.replace('/hrm/attendance');
         }
-    }, [pathname, role, router]);
+    }, [pathname, currentRole, router]);
 
     const visibleLinks = ALL_HRM_LINKS.filter(link => !link.adminOnly || confirmedAdmin);
 
-    // If no role yet (unlikely since it comes from server, but just in case)
-    if (!role) {
-        return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading Workspace...</div>;
+    // If no role yet
+    if (!currentRole && !mounted) {
+        return (
+            <div className="flex flex-col h-full items-center justify-center gap-4">
+                <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-sm font-medium text-muted-foreground">Synchronizing Workspace...</p>
+            </div>
+        );
     }
 
     return (
@@ -98,7 +104,7 @@ export default function HRMLayoutClient({ children, role }: { children: React.Re
                 <div 
                     className={cn(
                         "h-full transition-opacity duration-300",
-                        confirmedStaff && !STAFF_ALLOWED.some(p => pathname === p || pathname.startsWith(p + '/'))
+                        (confirmedStaff && !STAFF_ALLOWED.some(p => pathname === p || pathname.startsWith(p + '/'))) || (!currentRole && mounted)
                             ? "opacity-0 pointer-events-none select-none" 
                             : "opacity-100"
                     )}

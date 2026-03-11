@@ -8,14 +8,6 @@ export const authConfig = {
     callbacks: {
         authorized({ auth, request: { nextUrl } }) {
             const isLoggedIn = !!auth?.user;
-            const isOnDashboard = nextUrl.pathname.startsWith('/');
-            /* Note: startsWith('/') matches everything, strictly we might want 
-               to protect specific routes, but let's assume root is protected 
-               except login/register. 
-               Better logic: 
-               - Login/Register are public.
-               - Everything else is protected.
-            */
             const isAuthPage = nextUrl.pathname.startsWith('/login') || nextUrl.pathname.startsWith('/register');
             const isPublicAsset = nextUrl.pathname.includes('.') || nextUrl.pathname.match(/\.(svg|png|jpg|jpeg|ico|webp)$/) || nextUrl.pathname.startsWith('/public/');
 
@@ -26,9 +18,10 @@ export const authConfig = {
                 return true;
             }
 
-            // Protect all other routes
+            // Strictly protect all other routes
             if (!isLoggedIn) {
-                return false; // Redirect to login
+                // By returning false, NextAuth will automatically redirect to the signIn page
+                return false;
             }
 
             return true;
