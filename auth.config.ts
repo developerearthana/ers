@@ -13,16 +13,12 @@ export const authConfig = {
 
             if (isPublicAsset) return true;
 
-            if (isAuthPage) {
-                if (isLoggedIn) return Response.redirect(new URL('/', nextUrl));
-                return true;
-            }
+            // Always allow the login / register pages — never auto-redirect away.
+            // This ensures clicking the app URL always shows the login form first.
+            if (isAuthPage) return true;
 
-            // Strictly protect all other routes
-            if (!isLoggedIn) {
-                // By returning false, NextAuth will automatically redirect to the signIn page
-                return false;
-            }
+            // Protect every other route — unauthenticated users go to /login
+            if (!isLoggedIn) return false;
 
             return true;
         },
