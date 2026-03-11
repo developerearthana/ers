@@ -1,235 +1,271 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { PageWrapper, CardWrapper } from '@/components/ui/page-wrapper';
 import { Button } from '@/components/ui/button';
-import { Plus, Filter, LayoutTemplate, Briefcase, Tags, Search } from 'lucide-react';
-import { getKPITemplates, createKPITemplate } from '@/app/actions/kpi';
+import { Plus, Filter, LayoutTemplate, Tags, Search, Pencil, Trash2, ArrowLeft } from 'lucide-react';
+import { getKPITemplates, createKPITemplate, updateKPITemplate, deleteKPITemplate } from '@/app/actions/kpi';
+import { getDepartments } from '@/app/actions/organization';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+
+const emptyTemplate = {
+    id: '',
+    name: '',
+    department: '',
+    description: ''
+};
 
 export default function KPITemplatesPage() {
     const [templates, setTemplates] = useState<any[]>([]);
+    const [departments, setDepartments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedDept, setSelectedDept] = useState('All');
-    const [showModal, setShowModal] = useState(false);
-    const [isCreating, setIsCreating] = useState(false);
-
-    // Filter Options
-    const departments = ["All", "Sales", "Marketing", "Engineering", "HR", "Finance", "Operations", "Projects", "Safety", "Design", "Quality", "R&D"];
-
-    const [newTemplate, setNewTemplate] = useState({
-        name: '', industry: 'Construction', department: 'Operations',
-        unit: 'Count', defaultTarget: '', frequency: 'Monthly', description: ''
-    });
+    
+    // View state
+    const [view, setView] = useState<'list' | 'form'>('list');
+    const [isSaving, setIsSaving] = useState(false);
+    const [editingTemplate, setEditingTemplate] = useState<any>(emptyTemplate);
 
     useEffect(() => {
-        loadTemplates();
+        loadData();
     }, []);
 
-    const loadTemplates = async () => {
+    const loadData = async () => {
         setLoading(true);
         try {
-            const res = await getKPITemplates({});
-            if (res.success && res.data) {
-                setTemplates(res.data);
+            const deptRes = await getDepartments();
+            const tplRes = await getKPITemplates({ search: searchQuery, department: selectedDept });
+            
+            if (deptRes && Array.isArray(deptRes)) {
+                setDepartments(deptRes);
             }
-        } catch (error) {
-            toast.error("Failed to load templates");
+            if (tplRes.success && tplRes.data) {
+                setTemplates(tplRes.data);
+            }
+        } catch (_error) {
+            toast.error("Failed to load data");
         } finally {
             setLoading(false);
         }
     };
 
-    const handleCreate = async () => {
-        if (!newTemplate.name) return toast.error("Template name is required");
-        setIsCreating(true);
+    useEffect(() => {
+        const fetchTemplates = async () => {
+             const tplRes = await getKPITemplates({ search: searchQuery, department: selectedDept });
+             if (tplRes.success && tplRes.data) {
+                 setTemplates(tplRes.data);
+             }
+        }
+        fetchTemplates();
+    }, [searchQuery, selectedDept]);
+
+    const openCreate = () => {
+        setEditingTemplate(emptyTemplate);
+        setView('form');
+    };
+
+    const openEdit = (template: any) => {
+        setEditingTemplate({
+            id: template._id || template.id,
+            name: template.name || '',
+            department: template.department || '',
+            description: template.description || ''
+        });
+        setView('form');
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingTemplate.name) return toast.error("Template name is required");
+        if (!editingTemplate.department) return toast.error("Department is required");
+        
+        setIsSaving(true);
         try {
-            const res = await createKPITemplate(newTemplate as any);
+            const res = editingTemplate.id
+                ? await updateKPITemplate(editingTemplate as any)
+                : await createKPITemplate(editingTemplate as any);
+
             if (res.success) {
-                toast.success("Template created successfully");
-                setShowModal(false);
-                loadTemplates();
-                setNewTemplate({
-                    name: '', industry: 'Construction', department: 'Operations',
-                    unit: 'Count', defaultTarget: '', frequency: 'Monthly', description: ''
-                });
+                toast.success(editingTemplate.id ? "Template updated" : "Template created successfully");
+                setView('list');
+                setEditingTemplate(emptyTemplate);
+                loadData();
             } else {
-                toast.error(res.error);
+                toast.error(res.error || 'Failed to save template');
             }
-        } catch (error) {
-            toast.error("Failed to create template");
         } finally {
-            setIsCreating(false);
+            setIsSaving(false);
         }
     };
 
-    const filteredTemplates = templates.filter(t => {
-        const matchesDept = selectedDept === 'All' || t.department === selectedDept;
-        const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.industry.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesDept && matchesSearch;
-    });
+    const handleDelete = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this template?")) return;
+        const res = await deleteKPITemplate(id);
+        if (res.success) {
+            toast.success('Template deleted');
+            loadData();
+        } else {
+            toast.error(res.error || 'Failed to delete template');
+        }
+    };
 
+    if (view === 'form') {
+        return (
+            <PageWrapper className="space-y-6 max-w-4xl mx-auto">
+                <div className="flex flex-col gap-1 mb-4">
+                    <Button variant="ghost" className="w-fit text-muted-foreground hover:text-foreground pl-0 mb-2 gap-2" onClick={() => setView('list')}>
+                        <ArrowLeft className="w-4 h-4" /> Back to templates
+                    </Button>
+                    <h1 className="text-3xl font-bold text-foreground">
+                        {editingTemplate.id ? 'Edit KPI Template' : 'Create New KPI Template'}
+                    </h1>
+                    <p className="text-muted-foreground">Define a standard metric parameter for departments to adopt.</p>
+                </div>
+
+                <div className="bg-card p-8 rounded-xl border border-border shadow-sm">
+                    <form onSubmit={handleSave} className="space-y-8">
+                        <div className="space-y-6">
+                            <h2 className="text-xl font-semibold flex items-center gap-2 border-b pb-4">
+                                <LayoutTemplate className="w-5 h-5 text-primary" />
+                                KPI Configuration
+                            </h2>
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-foreground">KPI Name <span className="text-destructive">*</span></label>
+                                <input
+                                    required
+                                    className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200"
+                                    placeholder="e.g., Target Revenue Generated"
+                                    value={editingTemplate.name}
+                                    onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">A clear, actionable name for this metric.</p>
+                            </div>
+
+                            <div className="space-y-2 pt-2">
+                                <label className="text-sm font-semibold text-foreground">Department <span className="text-destructive">*</span></label>
+                                <select
+                                    required
+                                    className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200"
+                                    value={editingTemplate.department}
+                                    onChange={(e) => setEditingTemplate({ ...editingTemplate, department: e.target.value })}
+                                >
+                                    <option value="" disabled>Select a department</option>
+                                    {departments.map((dept) => (
+                                        <option key={dept._id || dept.id} value={dept.name}>
+                                            {dept.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2 pt-2">
+                                <label className="text-sm font-semibold text-foreground">Description</label>
+                                <textarea
+                                    className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200 min-h-[160px] resize-y"
+                                    placeholder="Explain the purpose of this KPI, how it's measured, and any other relevant guidelines..."
+                                    value={editingTemplate.description}
+                                    onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t flex justify-end gap-3">
+                            <Button type="button" variant="outline" onClick={() => setView('list')} disabled={isSaving}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isSaving} className="min-w-[150px] font-medium shadow-lg shadow-primary/20">
+                                {isSaving ? "Saving..." : "Save Template"}
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+            </PageWrapper>
+        );
+    }
+
+    // List View
     return (
         <PageWrapper className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">KPI Library & Templates</h1>
-                    <p className="text-gray-500">Standardize performance tracking with industry-best templates.</p>
+                    <h1 className="text-2xl font-bold text-foreground">KPI Library & Templates</h1>
+                    <p className="text-muted-foreground mt-1">Standardize performance tracking with reusable KPI definitions.</p>
                 </div>
-                <div className="flex gap-2">
-                    <Dialog open={showModal} onOpenChange={setShowModal}>
-                        <DialogTrigger asChild>
-                            <Button className="gap-2 shadow-lg shadow-primary/20">
-                                <Plus className="w-4 h-4" /> Create Template
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px]">
-                            <DialogHeader>
-                                <DialogTitle>Add New KPI Template</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">KPI Name</label>
-                                    <input
-                                        className="w-full p-2 border rounded-md"
-                                        placeholder="e.g., Monthly Sales Growth"
-                                        value={newTemplate.name}
-                                        onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Industry</label>
-                                        <input
-                                            className="w-full p-2 border rounded-md"
-                                            placeholder="Ex: Construction"
-                                            value={newTemplate.industry}
-                                            onChange={(e) => setNewTemplate({ ...newTemplate, industry: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Department</label>
-                                        <select
-                                            aria-label="Filter by Department"
-                                            className="w-full p-2 border rounded-md"
-                                            value={newTemplate.department}
-                                            onChange={(e) => setNewTemplate({ ...newTemplate, department: e.target.value })}
-                                        >
-                                            {departments.filter(d => d !== 'All').map(d => <option key={d} value={d}>{d}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Unit</label>
-                                        <select
-                                            aria-label="Filter by Unit"
-                                            className="w-full p-2 border rounded-md"
-                                            value={newTemplate.unit}
-                                            onChange={(e) => setNewTemplate({ ...newTemplate, unit: e.target.value })}
-                                        >
-                                            <option value="Count">Count</option>
-                                            <option value="Percentage">Percentage (%)</option>
-                                            <option value="Currency">Currency (₹)</option>
-                                            <option value="Time">Time (Days/Hrs)</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Frequency</label>
-                                        <select
-                                            aria-label="Filter by Frequency"
-                                            className="w-full p-2 border rounded-md"
-                                            value={newTemplate.frequency}
-                                            onChange={(e) => setNewTemplate({ ...newTemplate, frequency: e.target.value })}
-                                        >
-                                            <option value="Weekly">Weekly</option>
-                                            <option value="Monthly">Monthly</option>
-                                            <option value="Quarterly">Quarterly</option>
-                                            <option value="Project">Project</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Description (Optional)</label>
-                                    <textarea
-                                        className="w-full p-2 border rounded-md"
-                                        placeholder="Explain how to measure this..."
-                                        rows={3}
-                                        value={newTemplate.description}
-                                        onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
-                                    />
-                                </div>
-                                <Button className="w-full" onClick={handleCreate} disabled={isCreating}>
-                                    {isCreating ? "Saving..." : "Save Template"}
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-                </div>
+                <Button className="gap-2 shadow-lg shadow-primary/20" onClick={openCreate}>
+                    <Plus className="w-5 h-5" /> Create Template
+                </Button>
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-4 p-4 bg-white/50 border border-gray-200 rounded-xl backdrop-blur-sm">
+            <div className="flex flex-col md:flex-row gap-4 p-4 bg-card border border-border rounded-xl shadow-sm">
                 <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
-                        placeholder="Search templates by name or industry..."
-                        className="w-full pl-9 p-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        placeholder="Search templates by name or department..."
+                        className="w-full pl-9 p-2.5 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
 
                 <div className="flex items-center gap-2 min-w-[200px]">
-                    <Filter className="w-4 h-4 text-gray-500" />
+                    <Filter className="w-4 h-4 text-muted-foreground" />
                     <select
-                        aria-label="Select Department"
-                        className="flex-1 bg-white border border-gray-200 rounded-lg p-2 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        aria-label="Select Department Filter"
+                        className="flex-1 bg-background border border-border rounded-lg p-2.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                         value={selectedDept}
                         onChange={(e) => setSelectedDept(e.target.value)}
                     >
-                        {departments.map(d => <option key={d} value={d}>{d} Dept</option>)}
+                        <option value="All">All Departments</option>
+                        {departments.map((dept) => (
+                            <option key={dept._id || dept.id} value={dept.name}>
+                                {dept.name}
+                            </option>
+                        ))}
                     </select>
                 </div>
             </div>
 
-            {/* Grid */}
             {loading ? (
-                <div className="text-center py-20 text-gray-500">Loading library...</div>
-            ) : filteredTemplates.length === 0 ? (
-                <div className="text-center py-20 bg-background rounded-xl border border-dashed text-gray-500">
-                    No templates found matching your search.
+                <div className="text-center py-24 text-muted-foreground">Loading library...</div>
+            ) : templates.length === 0 ? (
+                <div className="text-center py-24 bg-card rounded-xl border border-dashed border-border shadow-sm text-muted-foreground">
+                    No templates found matching your criteria.
                 </div>
             ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredTemplates.map((t) => (
-                        <CardWrapper key={t._id} className="glass-card p-6 rounded-xl hover:shadow-lg transition-all group">
+                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {templates.map((template) => (
+                        <CardWrapper key={template._id || template.id} className="glass-card p-6 rounded-xl hover:shadow-lg hover:border-primary/20 transition-all group flex flex-col h-full bg-card">
                             <div className="flex justify-between items-start mb-4">
-                                <div className="p-2 bg-white text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                <div className="p-2.5 bg-primary/10 text-primary rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
                                     <LayoutTemplate className="w-5 h-5" />
                                 </div>
-                                <span className="text-xs font-bold px-2 py-1 bg-white text-gray-600 rounded-full">
-                                    {t.frequency}
-                                </span>
                             </div>
-                            <h3 className="font-bold text-gray-900 mb-1">{t.name}</h3>
-                            <p className="text-sm text-gray-500 mb-4 line-clamp-2">{t.description || "No description provided."}</p>
-
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                <span className="flex items-center gap-1 text-xs font-medium text-gray-600 bg-background px-2 py-1 rounded-md border">
-                                    <Briefcase className="w-3 h-3" /> {t.industry}
-                                </span>
-                                <span className="flex items-center gap-1 text-xs font-medium text-gray-600 bg-background px-2 py-1 rounded-md border">
-                                    <Tags className="w-3 h-3" /> {t.department}
-                                </span>
+                            <h3 className="font-bold text-foreground mb-2.5 text-lg">{template.name}</h3>
+                            
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-accent/50 px-2.5 py-1.5 rounded-md border border-border w-fit mb-4">
+                                <Tags className="w-3.5 h-3.5" /> {template.department}
                             </div>
+                            
+                            <p className="text-sm text-muted-foreground mb-8 line-clamp-3 flex-1 leading-relaxed">
+                                {template.description || "No description provided."}
+                            </p>
 
-                            <Button variant="outline" className="w-full text-xs h-9">
-                                Use This Template
-                            </Button>
+                            <div className="grid grid-cols-3 gap-3 mt-auto pt-4 border-t border-border/50">
+                                <Link
+                                    href={`/goals/plan?template=${template._id || template.id}`}
+                                    className="inline-flex h-9 items-center justify-center rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                                >
+                                    Use
+                                </Link>
+                                <Button variant="outline" className="text-xs h-9 font-semibold rounded-lg hover:bg-accent" onClick={() => openEdit(template)}>
+                                    <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
+                                </Button>
+                                <Button variant="outline" className="text-xs h-9 font-semibold text-destructive rounded-lg hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all duration-200" onClick={() => handleDelete(template._id || template.id)}>
+                                    <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete
+                                </Button>
+                            </div>
                         </CardWrapper>
                     ))}
                 </div>

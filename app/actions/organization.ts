@@ -126,12 +126,16 @@ const DepartmentSchema = z.object({
     name: z.string().min(1, "Name is required"),
     code: z.string().min(1, "Code is required"),
     headOfDepartment: z.string().optional(),
+    employees: z.array(z.string()).optional(),
 });
 
 export const getDepartments = async () => {
     await connectToDatabase();
     // Populate subsidiary info for display
-    const departments = await Department.find().populate('subsidiaryId', 'name').sort({ createdAt: -1 });
+    const departments = await Department.find()
+        .populate('subsidiaryId', 'name')
+        .populate('employees', 'name email image jobTitle')
+        .sort({ createdAt: -1 });
     return JSON.parse(JSON.stringify(departments));
 };
 
@@ -142,6 +146,7 @@ export const createDepartment = createJSONAction(DepartmentSchema, async (data) 
         name: data.name,
         code: data.code,
         headOfDepartment: data.headOfDepartment,
+        employees: data.employees || []
     });
 
     revalidatePath("/masters/departments");
@@ -153,7 +158,7 @@ export const updateDepartment = createJSONAction(DepartmentSchema, async (data) 
     if (!data.id) throw new Error("ID required for update");
     const dept = await Department.findByIdAndUpdate(
         data.id,
-        { subsidiaryId: data.subsidiaryId, name: data.name, code: data.code, headOfDepartment: data.headOfDepartment },
+        { subsidiaryId: data.subsidiaryId, name: data.name, code: data.code, headOfDepartment: data.headOfDepartment, employees: data.employees || [] },
         { new: true }
     );
     revalidatePath("/masters/departments");

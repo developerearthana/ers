@@ -20,7 +20,7 @@ export function KPIEntryModal({ isOpen, onClose, onSubmit, subsidiaries = [], me
     // Auto-populate from Selected Goal
     useEffect(() => {
         if (selectedGoalId) {
-            const goal = goals.find(g => g._id === selectedGoalId);
+            const goal = goals.find(g => (g._id || g.id) === selectedGoalId);
             if (goal) {
                 setSub(goal.subsidiary);
                 setMetric(goal.metric || goal.title); // Fallback if metric not separate
@@ -59,7 +59,7 @@ export function KPIEntryModal({ isOpen, onClose, onSubmit, subsidiaries = [], me
 
     // Auto-populate Team when Assignee is selected
     const updateTeamFromAssignee = useCallback((selectedAssignee: string) => {
-        const selectedUser = users.find((u: User) => u.name === selectedAssignee);
+        const selectedUser = users.find((u: User) => u.name === selectedAssignee || u.id === selectedAssignee);
         if (selectedUser) {
             setTeam(selectedUser.dept);
         }
@@ -190,7 +190,7 @@ export function KPIEntryModal({ isOpen, onClose, onSubmit, subsidiaries = [], me
                             >
                                 <option value="">Select User</option>
                                 {users.map((u: User) => (
-                                    <option key={u.id} value={u.name}>{u.name}</option>
+                                    <option key={u.id} value={u.id}>{u.name}</option>
                                 ))}
                             </select>
                         </div>

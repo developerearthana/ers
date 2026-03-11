@@ -201,17 +201,15 @@ export default function SubsidiariesMaster() {
 
             {/* Edit/Create Sheet */}
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetContent className="flex flex-col h-full w-full sm:max-w-md">
+                <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="flex flex-col h-full w-full sm:max-w-md">
                     <SheetHeader>
                         <SheetTitle>
                             {isViewOnly ? 'Subsidiary Details' : (currentSub ? 'Edit Subsidiary' : 'Add New Subsidiary')}
                         </SheetTitle>
                     </SheetHeader>
                     <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden mt-6">
-                        <fieldset disabled={isViewOnly} className="contents group-disabled">
-                            <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-                                <div className="space-y-6 pb-6">
-                                    <div className="flex justify-center">
+                        <fieldset disabled={isViewOnly} className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-6 space-y-6 group-disabled">
+                            <div className="flex justify-center mt-2">
                                         <ImageUpload
                                             value={formData.logo}
                                             onChange={(url) => setFormData(prev => ({ ...prev, logo: url }))}
@@ -276,8 +274,6 @@ export default function SubsidiariesMaster() {
                                             placeholder="Brief description of activities"
                                         />
                                     </div>
-                                </div>
-                            </div>
                         </fieldset>
 
                         <SheetFooter className="py-4 border-t mt-auto">

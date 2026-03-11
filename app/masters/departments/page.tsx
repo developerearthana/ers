@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/components/ui/toaster';
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment, getSubsidiaries } from '@/app/actions/organization';
+import { getAllUsers } from '@/app/actions/user';
 
 interface Department {
     _id?: string;
@@ -17,6 +18,7 @@ interface Department {
     code: string;
     subsidiaryId: string | { _id: string, name: string }; // Populated or ID
     headOfDepartment?: string;
+    employees?: any[]; // Populated users or string array
     teamCount?: number; // Optional until implemented
 }
 
@@ -28,6 +30,7 @@ interface Subsidiary {
 export default function DepartmentsMaster() {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [subsidiaries, setSubsidiaries] = useState<Subsidiary[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [currentDept, setCurrentDept] = useState<Department | null>(null);
@@ -39,7 +42,8 @@ export default function DepartmentsMaster() {
         name: '',
         code: '',
         subsidiaryId: '',
-        headOfDepartment: ''
+        headOfDepartment: '',
+        employees: [] as string[]
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -58,12 +62,14 @@ export default function DepartmentsMaster() {
 
     const loadData = async () => {
         setLoading(true);
-        const [deptsData, subsData] = await Promise.all([
+        const [deptsData, subsData, usersData] = await Promise.all([
             getDepartments(),
-            getSubsidiaries()
+            getSubsidiaries(),
+            getAllUsers()
         ]);
         setDepartments(deptsData || []);
         setSubsidiaries(subsData || []);
+        setUsers(usersData || []);
         setLoading(false);
     };
 
@@ -74,11 +80,12 @@ export default function DepartmentsMaster() {
                 name: dept.name,
                 code: dept.code,
                 subsidiaryId: typeof dept.subsidiaryId === 'object' ? dept.subsidiaryId._id : dept.subsidiaryId,
-                headOfDepartment: dept.headOfDepartment || ''
+                headOfDepartment: dept.headOfDepartment || '',
+                employees: dept.employees ? dept.employees.map(e => typeof e === 'object' ? (e._id || e.id) : e) : []
             });
         } else {
             setCurrentDept(null);
-            setFormData({ name: '', code: '', subsidiaryId: '', headOfDepartment: '' });
+            setFormData({ name: '', code: '', subsidiaryId: '', headOfDepartment: '', employees: [] });
         }
         setIsSheetOpen(true);
     };
@@ -219,6 +226,11 @@ export default function DepartmentsMaster() {
                                             <span className="uppercase tracking-wider text-[10px] font-bold text-gray-400">Head of Dept.</span>
                                             <p className="font-medium text-gray-700 truncate">{dept.headOfDepartment || 'Not Assigned'}</p>
                                         </div>
+                                        
+                                        <div className="text-xs text-gray-500 flex justify-between items-center border-t pt-2 mt-2">
+                                            <span className="uppercase tracking-wider text-[10px] font-bold text-gray-400">Staff Assigned</span>
+                                            <span className="font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">{dept.employees ? dept.employees.length : 0} Employees</span>
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center justify-end gap-2 pt-3 mt-3 border-t">
@@ -252,6 +264,7 @@ export default function DepartmentsMaster() {
                                             <th className="px-6 py-3 font-medium">Department Name</th>
                                             <th className="px-6 py-3 font-medium">Entity</th>
                                             <th className="px-6 py-3 font-medium">Head of Dept.</th>
+                                            <th className="px-6 py-3 font-medium text-center">Staff Count</th>
                                             <th className="px-6 py-3 font-medium text-right">Actions</th>
                                         </tr>
                                     </thead>
@@ -262,6 +275,11 @@ export default function DepartmentsMaster() {
                                                 <td className="px-6 py-3 font-medium text-gray-900">{dept.name}</td>
                                                 <td className="px-6 py-3 text-gray-600">{typeof dept.subsidiaryId === 'object' ? dept.subsidiaryId.name : 'Unknown'}</td>
                                                 <td className="px-6 py-3 text-gray-600">{dept.headOfDepartment || '-'}</td>
+                                                <td className="px-6 py-3 text-center">
+                                                    <span className="font-bold bg-primary/10 text-primary px-2 py-1 rounded-full text-xs">
+                                                        {dept.employees ? dept.employees.length : 0}
+                                                    </span>
+                                                </td>
                                                 <td className="px-6 py-3 text-right">
                                                     <div className="flex items-center justify-end gap-2">
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600 hover:bg-amber-50 rounded-full" onClick={() => handleOpenSheet(dept)}>
@@ -284,11 +302,11 @@ export default function DepartmentsMaster() {
 
             {/* Create/Edit Sheet */}
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetContent className="w-full sm:max-w-md">
+                <SheetContent className="w-full sm:max-w-md overflow-y-auto">
                     <SheetHeader>
                         <SheetTitle>{currentDept ? 'Edit Department' : 'Add Department'}</SheetTitle>
                     </SheetHeader>
-                    <form onSubmit={handleSubmit} className="space-y-6 mt-6">
+                    <form onSubmit={handleSubmit} className="space-y-6 mt-6 pb-20">
                         <div className="space-y-2">
                             <Label>Entity</Label>
                             <Select
@@ -332,17 +350,63 @@ export default function DepartmentsMaster() {
                             <Input
                                 value={formData.headOfDepartment}
                                 onChange={e => setFormData({ ...formData, headOfDepartment: e.target.value })}
-                                placeholder="Full Name"
+                                placeholder="Full Name or Title"
                             />
                         </div>
 
-                        <SheetFooter>
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                                <Label>Assigned Employees ({formData.employees.length})</Label>
+                            </div>
+                            <div className="border border-border rounded-lg max-h-[250px] overflow-y-auto p-2 bg-background space-y-1 shadow-inner">
+                                {users.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground p-3 text-center">No users found.</p>
+                                ) : (
+                                    users.map(u => (
+                                        <label key={u._id || u.id} className="flex items-center gap-3 p-2.5 hover:bg-muted rounded-md cursor-pointer transition-colors border border-transparent hover:border-border">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 rounded text-primary border-gray-300 focus:ring-primary/20 transition-all"
+                                                checked={formData.employees.includes(u._id || u.id)}
+                                                onChange={(e) => {
+                                                    const userId = u._id || u.id;
+                                                    if (e.target.checked) {
+                                                        setFormData({...formData, employees: [...formData.employees, userId]});
+                                                    } else {
+                                                        setFormData({...formData, employees: formData.employees.filter((id: string) => id !== userId)});
+                                                    }
+                                                }}
+                                            />
+                                            <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                                                {u.image ? (
+                                                    <img src={u.image} alt={u.name} className="w-7 h-7 rounded-full object-cover" />
+                                                ) : (
+                                                    <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                                                        {u.name?.charAt(0) || '?'}
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-col flex-1 overflow-hidden">
+                                                   <span className="text-sm font-semibold truncate">{u.name}</span>
+                                                   <span className="text-xs text-muted-foreground truncate">{u.email}</span>
+                                                </div>
+                                                <span className="text-[10px] font-bold uppercase bg-accent text-muted-foreground px-2 py-0.5 rounded-full shrink-0">
+                                                    {u.role}
+                                                </span>
+                                            </div>
+                                        </label>
+                                    ))
+                                )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-1">Check the boxes to link staff members permanently to this directory.</p>
+                        </div>
+
+                        <div className="pt-4 border-t mt-6 flex justify-end gap-3">
                             <Button type="button" variant="outline" onClick={() => setIsSheetOpen(false)}>Cancel</Button>
-                            <Button type="submit" disabled={isSaving}>
+                            <Button type="submit" disabled={isSaving} className="shadow-lg shadow-primary/20">
                                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                                 Save Changes
                             </Button>
-                        </SheetFooter>
+                        </div>
                     </form>
                 </SheetContent>
             </Sheet>

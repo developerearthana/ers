@@ -35,6 +35,7 @@ export interface IDepartment extends Document {
     name: string;
     code: string;
     headOfDepartment?: string;
+    employees?: mongoose.Types.ObjectId[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -75,6 +76,7 @@ const DepartmentSchema = new Schema({
     name: { type: String, required: true },
     code: { type: String },
     headOfDepartment: { type: String },
+    employees: [{ type: Schema.Types.ObjectId, ref: 'User' }],
 }, { timestamps: true });
 const TeamSchema = new Schema({
     name: { type: String, required: true },

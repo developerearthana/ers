@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Users, Loader2, Edit, Trash2, LayoutGrid, List, X, User as UserIcon, Target } from 'lucide-react';
+import { Plus, Search, Users, Loader2, Edit, Trash2, LayoutGrid, List, X, User as UserIcon } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import { getTeams, createTeam, updateTeam, deleteTeam } from '@/app/actions/orga
 import { getAllUsers } from '@/app/actions/user';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
-import KPIAssignmentManager from '@/components/kpi/KPIAssignmentManager';
 
 interface User {
     _id: string;
@@ -32,7 +31,7 @@ interface Team {
 }
 
 export default function TeamsMaster() {
-    const [activeTab, setActiveTab] = useState<'teams' | 'kpi'>('teams');
+
     const [teams, setTeams] = useState<Team[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -157,32 +156,6 @@ export default function TeamsMaster() {
 
     return (
         <div className="space-y-6">
-            {/* Tab switcher */}
-            <div className="flex items-center gap-2 border-b pb-3">
-                <button
-                    onClick={() => setActiveTab('teams')}
-                    className={cn(
-                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
-                        activeTab === 'teams' ? 'bg-primary text-white shadow-md shadow-primary/20' : 'text-gray-600 hover:bg-gray-100'
-                    )}
-                >
-                    <Users className="w-4 h-4" /> Teams
-                </button>
-                <button
-                    onClick={() => setActiveTab('kpi')}
-                    className={cn(
-                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
-                        activeTab === 'kpi' ? 'bg-primary text-white shadow-md shadow-primary/20' : 'text-gray-600 hover:bg-gray-100'
-                    )}
-                >
-                    <Target className="w-4 h-4" /> KPI Assignments
-                </button>
-            </div>
-
-            {activeTab === 'kpi' ? (
-                <KPIAssignmentManager />
-            ) : (
-                <>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">Teams</h1>
@@ -461,8 +434,6 @@ export default function TeamsMaster() {
                             </form>
                         </SheetContent>
                     </Sheet>
-                </>
-            )}
         </div>
     );
 }

@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Target, BarChart2, CalendarDays, ArrowUpRight, LayoutDashboard, Settings } from 'lucide-react';
+import { Target, BarChart2, CalendarDays, ArrowUpRight, LayoutDashboard, Settings, UserPlus } from 'lucide-react';
 
 const goalsLinks = [
     { name: 'Dashboard', href: '/goals', icon: Target },
     { name: 'Strategic Plan', href: '/goals/plan', icon: CalendarDays },
+    { name: 'Assign', href: '/goals/assign', icon: UserPlus },
     { name: 'KPI Reports', href: '/goals/kpi', icon: BarChart2 },
     { name: 'Analytics Board', href: '/goals/board', icon: LayoutDashboard },
     { name: 'KPI Library', href: '/goals/templates', icon: Target },

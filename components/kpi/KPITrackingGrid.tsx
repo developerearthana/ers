@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     Target, Plus, Loader2, CheckCircle2, Clock, AlertCircle,
-    TrendingUp, Users, User, Trash2, Edit3, History, PlusCircle
+    TrendingUp, Users, User, Trash2, Edit3, History, PlusCircle, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,18 @@ export function KPITrackingGrid({ data, onRefresh }: KPITrackingGridProps) {
     useEffect(() => {
         if (data) setKpis(data);
     }, [data]);
+
+    const [expandedKpis, setExpandedKpis] = useState<string[]>([]);
+    const [expandedProgress, setExpandedProgress] = useState<string[]>([]);
+
+    const toggleKpi = (id: string) => {
+        setExpandedKpis(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+
+    const toggleProgress = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setExpandedProgress(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
 
     const [contribForm, setContribForm] = useState({
         value: 0,
@@ -110,143 +122,70 @@ export function KPITrackingGrid({ data, onRefresh }: KPITrackingGridProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {kpis.map((kpi) => (
-                <div key={kpi._id} className="bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden border-border/50">
-                    {/* Card Header */}
-                    <div className="p-5 border-b bg-gray-50/50">
-                        <div className="flex justify-between items-start mb-3">
-                            <div className={cn("px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border", STATUS_COLORS[kpi.status])}>
-                                {kpi.status}
-                            </div>
-                            <div className="flex gap-1">
-                                <button
-                                    onClick={() => { setSelectedKpi(kpi); setContribForm({ value: 0, notes: '' }); setContribSheetOpen(true); }}
-                                    className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors border border-primary/20"
-                                    title="Add Contribution"
-                                >
-                                    <PlusCircle className="w-4 h-4" />
-                                </button>
-                            </div>
+                <div 
+                    key={kpi._id}
+                    className="bg-white border rounded-2xl p-5 shadow-sm hover:border-primary/50 transition-all cursor-pointer"
+                    onClick={() => toggleKpi(kpi._id)}
+                >
+                    {/* Always visible header */}
+                    <div className="flex justify-between items-start mb-6">
+                        <div className="pr-4">
+                            <h3 className="font-bold text-gray-900 text-lg line-clamp-2 leading-tight">{kpi.title}</h3>
+                            <p className="text-xs text-gray-500 mt-1.5 font-medium">{kpi.metric}</p>
                         </div>
-                        <h3 className="font-bold text-gray-900 text-lg line-clamp-1">{kpi.title}</h3>
-                        <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-                            <Target className="w-3.5 h-3.5" />
-                            <span>{kpi.metric}</span>
-                            <span className="text-gray-300">•</span>
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>{format(new Date(kpi.dueDate), 'MMM d, yyyy')}</span>
+                        <div className={cn("px-2.5 py-1 whitespace-nowrap rounded-lg text-[10px] font-bold uppercase tracking-wider border", STATUS_COLORS[kpi.status])}>
+                            {kpi.status}
                         </div>
                     </div>
-
-                    {/* Main Stats */}
-                    <div className="p-5 flex-grow space-y-4 text-gray-700">
-                        <div>
-                            <div className="flex justify-between text-xs font-bold mb-2">
-                                <span className="text-gray-500 uppercase tracking-tighter">Overall Progress</span>
-                                <span className="text-primary">{kpi.progress}%</span>
-                            </div>
-                            <Progress value={kpi.progress} className="h-2" />
-                            <div className="flex justify-between mt-2 text-[10px] font-medium text-gray-400">
-                                <span>Current: {kpi.actual} {kpi.unit}</span>
-                                <span>Target: {kpi.target} {kpi.unit}</span>
-                            </div>
+                    
+                    {/* Always visible Progress */}
+                    <div>
+                        <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+                            <span className="text-gray-400 uppercase tracking-wide">Overall Progress</span>
+                            <span className="text-primary">{kpi.progress}%</span>
                         </div>
+                        <Progress value={kpi.progress} className="h-2" />
+                    </div>
 
-                        {/* Team/Assignee Section */}
-                        <div className="pt-4 border-t border-gray-100">
-                            <div className="flex items-center justify-between mb-3">
+                    {/* Expanded Team Members View */}
+                    {expandedKpis.includes(kpi._id) && (
+                        <div className="mt-5 pt-5 border-t border-gray-100 animate-in fade-in slide-in-from-top-2">
+                            <div className="flex justify-between items-center mb-4">
                                 <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">
-                                    Performance Tracking
+                                    Team Contributions
                                 </span>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setSelectedKpi(kpi); setContribForm({ value: 0, notes: '' }); setContribSheetOpen(true); }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-xs font-bold"
+                                >
+                                    <PlusCircle className="w-3.5 h-3.5" /> Log Update
+                                </button>
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                            
+                            <div className="space-y-3">
                                 {kpi.assignedToTeam ? (
                                     kpi.assignedToTeam.members?.map((member: any) => {
                                         const userId = typeof member === 'string' ? member : member._id;
                                         const userName = typeof member === 'string' ? 'Member' : member.name;
-                                        const userImage = typeof member === 'string' ? null : member.image;
                                         const contribValue = getMemberContributions(kpi, userId);
                                         const contribPercent = getContributionPercent(kpi, contribValue);
-
+                                        
                                         return (
-                                            <div key={userId} className="p-2 rounded-xl bg-gray-50/50 border border-gray-100/50 space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <Avatar className="w-6 h-6 border-white shadow-sm">
-                                                        <AvatarImage src={userImage} />
-                                                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{userName.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="font-bold text-gray-700 text-[11px] truncate">{userName}</span>
-                                                </div>
-                                                <div>
-                                                    <div className="flex justify-between text-[9px] mb-1">
-                                                        <span className="text-emerald-600 font-bold">+{contribValue}</span>
-                                                        <span className="text-gray-500 font-semibold">{Math.round(contribPercent)}% contribution</span>
-                                                    </div>
-                                                    <Progress value={contribPercent} className="h-1" />
-                                                </div>
+                                            <div key={userId} className="flex justify-between items-center text-sm py-1">
+                                                <span className="font-semibold text-gray-700">{userName}</span>
+                                                <span className="text-emerald-600 text-xs font-black bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">{Math.round(contribPercent)}%</span>
                                             </div>
                                         );
                                     })
                                 ) : (
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-3 bg-primary/5 p-3 rounded-xl border border-primary/10">
-                                            <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
-                                                <AvatarImage src={kpi.assignedToUser?.image} />
-                                                <AvatarFallback className="bg-primary text-white">{kpi.assignedToUser?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-gray-900 text-sm">{kpi.assignedToUser?.name}</span>
-                                                <span className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold">{kpi.assignedToUser?.dept} • {kpi.assignedToUser?.role}</span>
-                                            </div>
-                                        </div>
-                                        <div className="px-1">
-                                            <div className="flex justify-between text-[10px] font-bold mb-1.5">
-                                                <span className="text-gray-400 uppercase">Individual Performance</span>
-                                                <span className="text-emerald-600">Total: {kpi.actual} {kpi.unit}</span>
-                                            </div>
-                                            <Progress value={kpi.progress} className="h-1.5" />
-                                        </div>
+                                    <div className="flex justify-between items-center text-sm py-1">
+                                        <span className="font-semibold text-gray-700">{kpi.assignedToUser?.name || 'User'}</span>
+                                        <span className="text-emerald-600 text-xs font-black bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">{Math.round(getContributionPercent(kpi, kpi.actual))}%</span>
                                     </div>
                                 )}
                             </div>
                         </div>
-
-                        {/* Recent Activity List */}
-                        {kpi.contributions?.length > 0 && (
-                            <div className="pt-4 border-t border-gray-100">
-                                <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest block mb-2">Recent Contributions</span>
-                                <div className="space-y-2">
-                                    {kpi.contributions.slice(-3).reverse().map((c: any, idx: number) => (
-                                        <div key={idx} className="flex items-start gap-2 text-[10px] bg-gray-50/50 p-2 rounded-lg border border-gray-100/50">
-                                            <div className="h-4 w-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">
-                                                +
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="font-bold text-gray-700">
-                                                    {c.user?.name || 'User'}{" "}
-                                                    <span className="text-emerald-600">+{c.value}</span>{" "}
-                                                    <span className="text-gray-500 font-semibold">
-                                                        ({Math.round(getContributionPercent(kpi, Number(c.value || 0)))}%)
-                                                    </span>
-                                                </p>
-                                                <p className="text-gray-400 text-[9px] truncate">{c.notes || 'Progress update'}</p>
-                                            </div>
-                                            <span className="text-gray-300 whitespace-nowrap">{format(new Date(c.date), 'HH:mm')}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Card Footer */}
-                    <div className="px-5 py-3 bg-gray-50/30 border-t flex justify-between items-center text-[10px] text-gray-400 font-medium">
-                        <div className="flex items-center gap-1">
-                            <History className="w-3 h-3" />
-                            <span>{kpi.contributions?.length || 0} activity logs</span>
-                        </div>
-                        <span>Assigned by {kpi.assignedBy?.name || 'Admin'}</span>
-                    </div>
+                    )}
                 </div>
             ))}
 

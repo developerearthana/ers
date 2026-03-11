@@ -6,6 +6,10 @@ import DashboardNav from '@/components/dashboards/DashboardNav';
 export default async function DashboardPage() {
   const session = await auth();
 
+  if (!session) {
+    redirect('/login');
+  }
+
   if (session?.user?.role === 'vendor') {
     redirect('/dashboards/vendor');
   }

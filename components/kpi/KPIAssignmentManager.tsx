@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     Target, Plus, Loader2, CheckCircle2, Clock, AlertCircle,
-    TrendingUp, Users, User, Trash2, Edit3, ChevronDown, X
+    TrendingUp, Users, User, Trash2, Edit3, ChevronDown, X, Check, ChevronsUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,9 @@ import {
     createKPIAssignment, getAllKPIAssignments, getMyKPIAssignments,
     updateKPIAssignment, deleteKPIAssignment
 } from '@/app/actions/kpi-assignments';
+import { getKPITemplates } from '@/app/actions/kpi';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { getTeams } from '@/app/actions/organization';
 import { getAllUsers } from '@/app/actions/user';
 
@@ -85,18 +88,30 @@ export default function KPIAssignmentManager() {
     const [filterStatus, setFilterStatus] = useState('All');
     const [filterType, setFilterType] = useState('All');
     const [form, setForm] = useState(defaultForm);
+    const [metricOpen, setMetricOpen] = useState(false);
+    const [kpiTemplates, setKpiTemplates] = useState<string[]>(METRICS);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [kpisRes, teamsData, usersData] = await Promise.all([
+            const [kpisRes, teamsData, usersData, templatesRes] = await Promise.all([
                 getMyKPIAssignments(),
                 getTeams(),
                 getAllUsers(),
+                getKPITemplates(),
             ]);
             if (kpisRes.success) setKpis(kpisRes.data || []);
             setTeams(teamsData || []);
             setUsers(usersData || []);
+
+            // Generate combined metrics list from templates + defaults
+            if (templatesRes.success && templatesRes.data) {
+                const templateNames = templatesRes.data.map((t: any) => t.name);
+                const combined = Array.from(new Set([...templateNames, ...METRICS]));
+                setKpiTemplates(combined as string[]);
+            } else {
+                setKpiTemplates(METRICS);
+            }
         } finally {
             setLoading(false);
         }
@@ -383,14 +398,53 @@ export default function KPIAssignmentManager() {
 
                         {/* Metric + Unit */}
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label>Metric *</Label>
-                                <Select value={form.metric} onValueChange={v => setForm(p => ({ ...p, metric: v }))}>
-                                    <SelectTrigger><SelectValue placeholder="Select metric" /></SelectTrigger>
-                                    <SelectContent className="bg-white max-h-60">
-                                        {METRICS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                            <div className="space-y-1.5 relative flex flex-col z-50">
+                                <Label className="mb-1">Metric *</Label>
+                                <div className="relative">
+                                    <Input 
+                                        required
+                                        placeholder="Search or enter metric..."
+                                        value={form.metric}
+                                        onChange={e => {
+                                            setForm(p => ({ ...p, metric: e.target.value }));
+                                            setMetricOpen(true);
+                                        }}
+                                        onFocus={() => setMetricOpen(true)}
+                                        onBlur={() => setTimeout(() => setMetricOpen(false), 200)}
+                                        className="w-full pr-8 bg-white"
+                                    />
+                                    <ChevronDown className="absolute right-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
+                                </div>
+                                {metricOpen && (
+                                    <div className="absolute top-[100%] left-0 w-full mt-1 bg-white border border-border rounded-lg shadow-xl max-h-60 overflow-y-auto z-[200]">
+                                        {kpiTemplates
+                                            .filter(m => m.toLowerCase().includes(form.metric.toLowerCase()))
+                                            .map(m => (
+                                                <div 
+                                                    key={m}
+                                                    className="px-3 py-2.5 text-sm cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors border-b border-border/50 last:border-0"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        setForm(p => ({ ...p, metric: m }));
+                                                        setMetricOpen(false);
+                                                    }}
+                                                >
+                                                    {m}
+                                                </div>
+                                            ))}
+                                        {form.metric && !kpiTemplates.some(m => m.toLowerCase() === form.metric.toLowerCase()) && (
+                                            <div 
+                                                className="px-3 py-2.5 text-sm cursor-pointer bg-gray-50 text-primary font-medium hover:bg-gray-100"
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    setMetricOpen(false);
+                                                }}
+                                            >
+                                                Use custom metric: "{form.metric}"
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-1.5">
                                 <Label>Unit</Label>

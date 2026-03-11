@@ -108,8 +108,8 @@
 
   /* Modern Scrollbar */
   ::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
@@ -128,6 +128,17 @@
     Level 2: Medium (Sidebars, Panels)
     Level 3: Strong (Modals, Floating Elements)
   */
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full transition-colors hover:bg-muted-foreground/50;
+  }
 
   .glass-1 {
     @apply bg-card border border-border shadow-sm;
