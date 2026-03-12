@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { KPITrackingGrid } from "@/components/kpi/KPITrackingGrid";
 import { Target } from "lucide-react";
+import { useCallback } from "react";
+import { getAllKPIAssignments } from "@/app/actions/kpi-assignments";
 
 export default function SuperAdminDashboard() {
     const [liveUsers, setLiveUsers] = useState<any[]>([]);
@@ -15,13 +17,17 @@ export default function SuperAdminDashboard() {
     const [loadingLive, setLoadingLive] = useState(true);
     const [kpis, setKpis] = useState<any[]>([]);
 
+    const loadKPIs = useCallback(async () => {
+        const res = await getAllKPIAssignments();
+        if (res.success) setKpis(res.data || []);
+    }, []);
+
     useEffect(() => {
         const loadDashboardData = async () => {
             try {
-                const [liveRes, leavesRes, kpisRes] = await Promise.all([
+                const [liveRes, leavesRes] = await Promise.all([
                     getLiveUsers(),
-                    getLeaves(),
-                    import("@/app/actions/kpi-assignments").then(m => m.getAllKPIAssignments())
+                    getLeaves()
                 ]);
 
                 if (liveRes.success && liveRes.data) {
@@ -31,7 +37,9 @@ export default function SuperAdminDashboard() {
                 if (leavesRes.success && leavesRes.data) {
                     setLeaveRequests(leavesRes.data.filter((r: any) => r.status === 'Pending'));
                 }
-                if (kpisRes.success) setKpis(kpisRes.data || []);
+                
+                // Load KPIs using the stabilized callback
+                await loadKPIs();
             } catch (error) {
                 console.error("Failed to load dashboard data", error);
             } finally {
@@ -43,7 +51,7 @@ export default function SuperAdminDashboard() {
         // Optional: setup a simple polling for live users every minute
         const interval = setInterval(loadDashboardData, 60000);
         return () => clearInterval(interval);
-    }, []);
+    }, [loadKPIs]);
 
     const handleApproveLeave = async (id: string, action: 'Approved' | 'Rejected') => {
         try {
@@ -59,13 +67,7 @@ export default function SuperAdminDashboard() {
         }
     };
 
-    const loadKPIs = async () => {
-        const res = await import("@/app/actions/kpi-assignments").then(m => m.getAllKPIAssignments());
-        if (res.success) setKpis(res.data || []);
-    };
-
     const stats = [
-        { label: 'Total Users', value: '1,248', trend: '+12%', color: 'blue', icon: Users },
         { title: 'Total Users', value: '1,248', change: '+12%', color: 'bg-white', textColor: 'text-blue-600', icon: Users },
         { title: 'Live Staff', value: liveUsers.length.toString(), change: 'Live', color: 'bg-emerald-50', textColor: 'text-emerald-600', icon: Clock },
         { title: 'Monthly Revenue', value: '$84.3k', change: '+8%', color: 'bg-white', textColor: 'text-purple-600', icon: DollarSign },
@@ -101,9 +103,9 @@ export default function SuperAdminDashboard() {
                                 <stat.icon className={`w-5 h-5 ${stat.textColor}`} />
                             </div>
                         </div>
-                        <p className={`text-xs flex items-center gap-1 font-medium ${(stat.change || '').includes('+') ? 'text-green-600' : stat.change === 'Stable' ? 'text-gray-500' : 'text-red-600'}`}>
-                            {stat.change && stat.change !== 'Stable' && <ArrowUpRight className={`w-3 h-3 ${(stat.change || '').includes('-') ? 'rotate-180' : ''}`} />}
-                            {stat.change === 'Stable' ? 'Stable' : `${stat.change} vs last month`}
+                        <p className={`text-xs flex items-center gap-1 font-medium ${(stat.change || '').includes('+') ? 'text-green-600' : (stat.change || '').includes('-') ? 'text-red-600' : stat.change === 'Stable' ? 'text-gray-500' : 'text-blue-600'}`}>
+                            {stat.change && (stat.change.includes('+') || stat.change.includes('-')) && <ArrowUpRight className={`w-3 h-3 ${stat.change.includes('-') ? 'rotate-180' : ''}`} />}
+                            {stat.change === 'Stable' || !stat.change.includes('%') ? stat.change : `${stat.change} vs last month`}
                         </p>
                     </div>
                 ))}
@@ -213,21 +215,6 @@ export default function SuperAdminDashboard() {
                     </div>
                 </div>
 
-                <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
-                    <h3 className="font-bold text-foreground mb-4">Critical Alerts</h3>
-                    <div className="space-y-4">
-                        {[1].map((i) => (
-                            <div key={i} className="flex gap-3 items-start p-3 bg-red-50 rounded-lg border border-red-100">
-                                <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
-                                <div>
-                                    <h4 className="text-sm font-bold text-red-900">Database Latency Spike</h4>
-                                    <p className="text-xs text-red-700 mt-1">Detected anomaly in US-East region server node.</p>
-                                    <span className="text-[10px] text-red-500 mt-2 block font-mono">10 mins ago</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
             </div>
         </div>
     );

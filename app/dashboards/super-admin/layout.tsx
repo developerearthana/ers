@@ -20,7 +20,7 @@ export default function SuperAdminLayout({
     const pathname = usePathname();
 
     return (
-        <div className="flex flex-col h-full gap-6">
+        <div className="flex flex-col h-full gap-0 -mt-6">
             <div className="flex items-center gap-6 border-b pb-4 overflow-x-auto">
                 {adminLinks.map((link) => {
                     const Icon = link.icon;

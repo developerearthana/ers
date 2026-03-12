@@ -61,8 +61,9 @@ export function KPITrackingGrid({ data, onRefresh }: KPITrackingGridProps) {
     });
 
     const load = useCallback(async () => {
+        // If parent handles refresh, don't trigger it automatically on mount
+        // Parent should manage the initial data fetch.
         if (onRefresh) {
-            onRefresh();
             return;
         }
         setLoading(true);
@@ -74,7 +75,11 @@ export function KPITrackingGrid({ data, onRefresh }: KPITrackingGridProps) {
         }
     }, [onRefresh]);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => { 
+        if (!data || data.length === 0) {
+            load(); 
+        }
+    }, [load, data]);
 
     const handleContribution = async (e: React.FormEvent) => {
         e.preventDefault();

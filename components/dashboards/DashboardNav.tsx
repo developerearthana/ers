@@ -21,8 +21,8 @@ const navItems = [
     { name: 'Admin', href: '/dashboards/super-admin', icon: ShieldCheck, roleGroup: 'admins' },
     { name: 'Manager', href: '/dashboards/manager', icon: Briefcase, roleGroup: 'managers' },
     { name: 'Staff', href: '/dashboards/employee', icon: User, roleGroup: 'staff' },
-    { name: 'Vendor', href: '/dashboards/vendor', icon: Store, roleGroup: 'vendors' },
     { name: 'Client', href: '/dashboards/customer', icon: Users, roleGroup: 'clients' },
+    { name: 'Vendor', href: '/dashboards/vendor', icon: Store, roleGroup: 'vendors' },
 ];
 
 export default function DashboardNav({ userRole }: { userRole?: string }) {
@@ -49,8 +49,8 @@ export default function DashboardNav({ userRole }: { userRole?: string }) {
     }, []);
 
     return (
-        <div className="w-full bg-card border-b border-border py-2 mb-6 shadow-sm z-30 relative">
-            <div className="flex items-center gap-2 px-6 overflow-x-auto min-h-[50px] no-scrollbar">
+        <div className="w-full bg-card border-b border-border py-2 z-30 relative">
+            <div className="flex items-center gap-6 px-6 overflow-x-auto min-h-[50px] no-scrollbar">
                 {navItems.map((link) => {
                     const Icon = link.icon;
                     const isActive = pathname === link.href || pathname.startsWith(link.href + '/');

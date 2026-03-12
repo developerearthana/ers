@@ -123,7 +123,7 @@ export default function AdminDashboard() {
                                 <span className="font-bold">34%</span>
                             </div>
                             <div className="h-2 bg-white rounded-full overflow-hidden">
-                                <div className="h-full bg-white0 w-[34%]"></div>
+                                <div className="h-full bg-white w-[34%]"></div>
                             </div>
                         </div>
                         <div>
@@ -132,7 +132,7 @@ export default function AdminDashboard() {
                                 <span className="font-bold">62%</span>
                             </div>
                             <div className="h-2 bg-white rounded-full overflow-hidden">
-                                <div className="h-full bg-white0 w-[62%]"></div>
+                                <div className="h-full bg-white w-[62%]"></div>
                             </div>
                         </div>
                         <div>
@@ -141,7 +141,7 @@ export default function AdminDashboard() {
                                 <span className="font-bold">28%Used</span>
                             </div>
                             <div className="h-2 bg-white rounded-full overflow-hidden">
-                                <div className="h-full bg-white0 w-[28%]"></div>
+                                <div className="h-full bg-white w-[28%]"></div>
                             </div>
                         </div>
                     </div>
