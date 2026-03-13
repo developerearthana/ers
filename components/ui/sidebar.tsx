@@ -85,7 +85,7 @@ export function Sidebar({
     const filteredNavItems = navItems.filter(item => {
         if (item.permission === 'basic-hrm') return true; // Always allow punch in and leave
 
-        if (userRole === 'super-admin') return true;
+        if (userRole === 'super-admin' || userRole === 'admin') return true;
         if (userPermissions?.includes('*')) return true;
         if (userPermissions?.includes(item.permission)) return true;
         return false;
@@ -134,7 +134,7 @@ export function Sidebar({
             <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar overflow-x-hidden">
                 <nav className="grid gap-1.5">
                     {filteredNavItems.map((item, index) => {
-                        const isSuperAdmin = userRole === 'super-admin';
+                        const isSuperAdmin = userRole === 'super-admin' || userRole === 'admin';
                         const isEmployeeArea = pathname?.startsWith('/dashboards/employee');
                         
                         let itemHref = item.href;
