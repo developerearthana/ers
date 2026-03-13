@@ -1,7 +1,5 @@
 "use server";
 
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
 import { auth } from "@/auth";
 
 export async function uploadFile(formData: FormData) {
@@ -16,36 +14,25 @@ export async function uploadFile(formData: FormData) {
             return { error: "No file uploaded" };
         }
 
-        // Enforce 10 MB server-side limit
-        const MAX_SIZE = 10 * 1024 * 1024; // 10 MB in bytes
-        if (file.size > MAX_SIZE) {
-            return { error: `File exceeds the 10 MB limit (${(file.size / 1024 / 1024).toFixed(1)} MB uploaded).` };
+        // Limit size for Data URL storage to avoid bloating MongoDB
+        // 5 MB is a safe limit for Data URLs (approx 6.7 MB base64 string)
+        const MAX_DATA_URL_SIZE = 5 * 1024 * 1024; 
+        if (file.size > MAX_DATA_URL_SIZE) {
+            return { error: `File too large for live persistence. Maximum 5 MB allowed for logos/documents in this version.` };
         }
 
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
+        
+        // Convert to Base64 Data URL
+        // This ensures the file is stored directly in the database (via the model using this URL)
+        // and persists across server restarts on platforms like Render or Vercel.
+        const base64String = buffer.toString('base64');
+        const publicUrl = `data:${file.type};base64,${base64String}`;
 
-        // Create unique filename
-        const timestamp = Date.now();
-        const filename = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "")}`;
-
-        // Ensure upload directory exists
-        const uploadDir = join(process.cwd(), "public", "uploads");
-        try {
-            await mkdir(uploadDir, { recursive: true });
-        } catch (e) {
-            // Ignore if exists
-        }
-
-        const filepath = join(uploadDir, filename);
-        await writeFile(filepath, buffer);
-
-        // Return the public URL
-        const publicUrl = `/uploads/${filename}`;
-
-        return { success: true, url: publicUrl };
+        return { success: true, url: publicUrl, filename: file.name };
     } catch (error: any) {
         console.error("Upload error:", error);
-        return { error: "Failed to upload file" };
+        return { error: "Failed to upload file to live storage" };
     }
 }

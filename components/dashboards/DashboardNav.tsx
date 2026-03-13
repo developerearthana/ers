@@ -17,7 +17,6 @@ import { getDashboardUsers } from '@/app/actions/user';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navItems = [
-    { name: 'Master', href: '/', icon: LayoutDashboard, roleGroup: null },
     { name: 'Admin', href: '/dashboards/super-admin', icon: ShieldCheck, roleGroup: 'admins' },
     { name: 'Manager', href: '/dashboards/manager', icon: Briefcase, roleGroup: 'managers' },
     { name: 'Staff', href: '/dashboards/employee', icon: User, roleGroup: 'staff' },

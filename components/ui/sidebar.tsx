@@ -134,13 +134,28 @@ export function Sidebar({
             <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar overflow-x-hidden">
                 <nav className="grid gap-1.5">
                     {filteredNavItems.map((item, index) => {
-                        const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
-                        const displayName = (item.href === '/' && userRole !== 'super-admin') ? 'Dashboard' : item.name;
+                        const isSuperAdmin = userRole === 'super-admin';
+                        const isEmployeeArea = pathname?.startsWith('/dashboards/employee');
+                        
+                        let itemHref = item.href;
+                        let displayName = item.name;
+
+                        // Make sure the Dashboard link points to the right place
+                        if (item.href === '/') {
+                            if (isSuperAdmin) {
+                                itemHref = '/dashboards/super-admin';
+                            } else {
+                                itemHref = '/dashboards/employee';
+                                displayName = 'Dashboard';
+                            }
+                        }
+
+                        const isActive = pathname === itemHref || (itemHref !== '/' && pathname?.startsWith(itemHref));
 
                         return (
                             <Link
                                 key={index}
-                                href={item.href}
+                                href={itemHref}
                                 title={collapsed ? displayName : ""}
                                 onClick={() => setMobileOpen(false)}
                                 className={cn(

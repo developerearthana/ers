@@ -16,7 +16,7 @@ export default async function RootPage() {
     if (role === 'vendor') redirect('/dashboards/vendor');
     else if (role === 'customer') redirect('/dashboards/customer');
     else if (role === 'manager') redirect('/dashboards/manager');
-    else if (role === 'staff' || role === 'user') redirect('/dashboards/employee');
-    else if (role === 'super-admin') redirect('/dashboards/super-admin');
-    else redirect('/dashboards/super-admin'); // fallback for admin or staff
+    else if (role === 'staff' || role === 'user' || role === 'employee') redirect('/dashboards/employee');
+    else if (role === 'super-admin' || role === 'admin') redirect('/dashboards/super-admin');
+    else redirect('/dashboards/employee'); // fallback — show staff dashboard for unknown roles
 }

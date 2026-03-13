@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { createEvent, updateEvent, deleteEvent } from "@/app/actions/activity/calendar";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
-import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Bell, Monitor, LogIn } from "lucide-react";
 
@@ -20,10 +19,10 @@ interface EventModalProps {
     selectedDate?: Date;
     event?: any;
     onRefresh: () => void;
+    session: any;
 }
 
-export default function EventModal({ isOpen, onClose, selectedDate, event, onRefresh }: EventModalProps) {
-    const { data: session } = useSession();
+export default function EventModal({ isOpen, onClose, selectedDate, event, onRefresh, session }: EventModalProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         title: "",

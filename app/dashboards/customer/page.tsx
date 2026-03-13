@@ -1,9 +1,14 @@
 "use client";
 
 import { PageWrapper, CardWrapper } from '@/components/ui/page-wrapper';
-import { Home, ClipboardList, MessageSquare, Star } from 'lucide-react';
+import { Home, ClipboardList, MessageSquare, Star, Bell } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getUpcomingAlerts } from '@/app/actions/activity/calendar';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
 
 export default function CustomerDashboard() {
+    const [alerts, setAlerts] = useState<any[]>([]);
     const stats = [
         { label: "Active Project", value: "Gridwise IoT", icon: Home, color: "bg-indigo-100 text-indigo-600" },
         { label: "Completion", value: "65%", icon: ClipboardList, color: "bg-blue-100 text-blue-600" },
@@ -11,12 +16,23 @@ export default function CustomerDashboard() {
         { label: "Satisfaction", value: "4.8/5", icon: Star, color: "bg-yellow-100 text-yellow-600" },
     ];
 
+    useEffect(() => {
+        const loadAlerts = async () => {
+            const res = await getUpcomingAlerts();
+            if (res.success) {
+                setAlerts(res.data);
+            }
+        };
+        loadAlerts();
+    }, []);
+
     return (
         <PageWrapper>
             <div className="mb-6">
                 <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600">Client Dashboard</h1>
                 <p className="text-gray-500 mt-1">Track progress, view documents, and communicate with the team.</p>
             </div>
+
 
             <div className="grid gap-4 md:grid-cols-4 mb-6">
                 {stats.map((stat, i) => (

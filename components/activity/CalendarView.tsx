@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameMonth, isSameDay, isToday, addWeeks, isWithinInterval, startOfDay, endOfDay } from "date-fns";
-import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameMonth, isSameDay, isToday, addWeeks, startOfDay } from "date-fns";
+import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon, Clock, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getEvents } from "@/app/actions/activity/calendar";
 import EventModal from "./EventModal";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 export default function CalendarView() {
+    const { data: session } = useSession();
     const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState<any[]>([]);
@@ -17,12 +20,28 @@ export default function CalendarView() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
     const [selectedEvent, setSelectedEvent] = useState<any>(undefined);
+    const [alertsEnabled, setAlertsEnabled] = useState(true);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('earthana_dashboard_alerts');
+        if (saved !== null) setAlertsEnabled(saved === 'true');
+    }, []);
+
+    const toggleAlerts = () => {
+        const newVal = !alertsEnabled;
+        setAlertsEnabled(newVal);
+        localStorage.setItem('earthana_dashboard_alerts', String(newVal));
+        if (newVal) {
+            toast.success("Dashboard notifications enabled! 🔔");
+        } else {
+            toast.info("Dashboard notifications muted.");
+        }
+    };
 
     const fetchEvents = async () => {
         setLoading(true);
         let start, end;
 
-        // Fetch slightly wider range to capture events spanning boundaries
         if (viewMode === 'month') {
             start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
             end = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 });
@@ -67,7 +86,6 @@ export default function CalendarView() {
 
     const today = () => setCurrentDate(new Date());
 
-    // Generate days for the grid
     const getCalendarDays = () => {
         if (viewMode === 'week') {
             return eachDayOfInterval({
@@ -75,7 +93,6 @@ export default function CalendarView() {
                 end: endOfWeek(currentDate, { weekStartsOn: 1 })
             });
         }
-        // Month view: Fixed 5 weeks (35 days) for consistency
         const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
         const days = [];
         let day = start;
@@ -88,29 +105,27 @@ export default function CalendarView() {
 
     const days = getCalendarDays();
 
-    // Check if an event covers this specific day
     const getDayEvents = (date: Date) => {
         return events.filter(event => {
-            const eventStart = startOfDay(new Date(event.start));
-            const eventEnd = event.end ? endOfDay(new Date(event.end)) : endOfDay(new Date(event.start));
-            const dayStart = startOfDay(date);
-
-            return isWithinInterval(dayStart, { start: eventStart, end: eventEnd });
+            const eventStart = new Date(event.start);
+            const eventEnd = event.end ? new Date(event.end) : eventStart;
+            const eventStartDay = startOfDay(eventStart);
+            const eventEndDay = startOfDay(eventEnd);
+            const thisDay = startOfDay(date);
+            return thisDay >= eventStartDay && thisDay <= eventEndDay;
         });
     };
 
-    // Configurable Colors
     const getEventColor = (type: string) => {
         switch (type) {
-            case 'Meeting': return 'bg-white0';
-            case 'Task': return 'bg-white0';
+            case 'Meeting': return 'bg-blue-500';
+            case 'Task': return 'bg-green-500';
             case 'Reminder': return 'bg-amber-500';
-            case 'Holiday': return 'bg-white0';
-            default: return 'bg-background0';
+            case 'Holiday': return 'bg-purple-500';
+            default: return 'bg-gray-500';
         }
     };
 
-    // Style helper for events
     const getEventStyle = (type: string) => {
         switch (type) {
             case 'Meeting': return 'bg-white text-blue-700 border-border';
@@ -123,9 +138,7 @@ export default function CalendarView() {
 
     return (
         <div className="flex flex-col h-[calc(100vh-120px)] gap-6 p-2">
-            {/* Header Section */}
             <div className="flex flex-col md:flex-row items-center justify-between bg-white/50 backdrop-blur-xl p-4 rounded-2xl border border-white/20 shadow-sm gap-4">
-                {/* ... same header ... */}
                 <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-start">
                     <div className="flex items-center gap-3">
                         <div className="bg-primary/10 p-2 rounded-xl">
@@ -143,6 +156,19 @@ export default function CalendarView() {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={toggleAlerts}
+                        className={cn(
+                            "rounded-xl transition-all duration-300 w-10 h-10",
+                            alertsEnabled ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-white text-gray-400 border-gray-100"
+                        )}
+                        title={alertsEnabled ? "Dashboard Alerts ON" : "Dashboard Alerts OFF"}
+                    >
+                        {alertsEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                    </Button>
+
                     <div className="flex bg-white/80 p-1 rounded-xl border border-gray-200/50">
                         <button
                             onClick={() => setViewMode('month')}
@@ -170,9 +196,7 @@ export default function CalendarView() {
                 </div>
             </div>
 
-            {/* Calendar Grid */}
             <div className="flex-1 bg-gradient-to-br from-white/60 to-white/30 backdrop-blur-xl rounded-3xl border border-white/60 overflow-hidden flex flex-col shadow-2xl shadow-blue-900/5">
-                {/* Weekday Headers */}
                 <div className="grid grid-cols-7 border-b border-white/10 bg-white/40 backdrop-blur-md shadow-sm shrink-0">
                     {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
                         <div key={day} className={cn(
@@ -189,7 +213,6 @@ export default function CalendarView() {
                     ))}
                 </div>
 
-                {/* Grid */}
                 {loading && events.length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center gap-3">
                         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -207,10 +230,6 @@ export default function CalendarView() {
                                 const isCurrentDay = isToday(day);
                                 const isSunday = day.getDay() === 0;
 
-                                // Check if this day is part of any event range to potentially color-code the background
-                                // Simply checking dayEvents.length > 0
-                                const hasEvents = dayEvents.length > 0;
-
                                 return (
                                     <motion.div
                                         key={day.toISOString()}
@@ -223,9 +242,6 @@ export default function CalendarView() {
                                             !isCurrentMonth && viewMode === 'month' && "bg-white/30 text-gray-300 opacity-60",
                                             isSunday && "bg-red-50/60 border-red-100/50",
                                             isCurrentDay && "ring-2 ring-green-500/50 bg-white/80 shadow-green-100",
-                                            // Optional: highlight day if it has events? Currently user asked for Range Selected color.
-                                            // The range is selected via Event Modal usually, here we just show existing events.
-                                            // If an event spans this day, we show the event bar.
                                         )}
                                         onClick={() => handleDateClick(day)}
                                     >
@@ -244,13 +260,13 @@ export default function CalendarView() {
                                         )}
 
                                         <div className="flex-1 overflow-y-auto space-y-1.5 custom-scrollbar mt-1">
-                                            {(isCurrentMonth || viewMode === 'week') && dayEvents.map((evt, evtIdx) => {
+                                            {(isCurrentMonth || viewMode === 'week') && dayEvents.map((evt) => {
                                                 const typeColor = getEventColor(evt.type || 'Meeting');
                                                 const styleClass = getEventStyle(evt.type || 'Meeting');
 
                                                 return (
                                                     <div
-                                                        key={`${evt._id}-${day.toISOString()}`} // Unique key per day instance
+                                                        key={`${evt._id || evt.id}-${day.toISOString()}`}
                                                         onClick={(e) => handleEventClick(e, evt)}
                                                         className={cn(
                                                             "text-[10px] px-2 py-1.5 rounded-lg truncate font-medium border border-transparent hover:scale-[1.02] active:scale-95 transition-all shadow-sm flex items-center gap-1.5",
@@ -259,10 +275,12 @@ export default function CalendarView() {
                                                         )}
                                                     >
                                                         <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", typeColor)} />
-                                                        <div className="flex flex-col min-w-0">
-                                                            {/* Show time only on Start Day */}
+                                                        <div className="flex flex-col min-w-0 flex-1">
                                                             {isSameDay(new Date(evt.start), day) && <span className="opacity-90 leading-tight">{format(new Date(evt.start), 'HH:mm')}</span>}
-                                                            <span className="truncate font-semibold">{evt.title}</span>
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <span className="truncate font-semibold">{evt.title}</span>
+                                                                {evt.alert && <Bell className="w-2.5 h-2.5 text-amber-500 shrink-0" />}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
@@ -282,8 +300,8 @@ export default function CalendarView() {
                 selectedDate={selectedDate}
                 event={selectedEvent}
                 onRefresh={fetchEvents}
+                session={session}
             />
         </div >
     );
 }
-

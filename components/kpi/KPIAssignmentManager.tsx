@@ -145,7 +145,9 @@ export default function KPIAssignmentManager() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!form.title || !form.metric || !form.dueDate) {
+        // Use metric as title if title is empty
+        const submissionTitle = form.title || form.metric;
+        if (!submissionTitle || !form.metric || !form.dueDate) {
             toast.error('Please fill in required fields');
             return;
         }
@@ -164,7 +166,7 @@ export default function KPIAssignmentManager() {
             if (editingId) {
                 res = await updateKPIAssignment({
                     id: editingId,
-                    title: form.title,
+                    title: submissionTitle,
                     description: form.description,
                     target: form.target,
                     dueDate: form.dueDate,
@@ -172,7 +174,7 @@ export default function KPIAssignmentManager() {
                 });
             } else {
                 res = await createKPIAssignment({
-                    title: form.title,
+                    title: submissionTitle,
                     description: form.description,
                     metric: form.metric,
                     unit: form.unit,
@@ -289,82 +291,100 @@ export default function KPIAssignmentManager() {
                     <p className="text-sm text-gray-400 mt-1">Click &quot;Assign KPI&quot; to get started</p>
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {filtered.map(kpi => {
-                        const overdue = kpi.status !== 'Completed' && isPast(new Date(kpi.dueDate));
-                        return (
-                            <div key={kpi._id} className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-all">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                                            <h4 className="font-bold text-gray-900 truncate">{kpi.title}</h4>
-                                            <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold border', STATUS_COLORS[kpi.status])}>
-                                                {kpi.status}
-                                            </span>
-                                            <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold', PRIORITY_COLORS[kpi.priority])}>
-                                                {kpi.priority}
-                                            </span>
-                                            {overdue && (
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
-                                                    Overdue
-                                                </span>
-                                            )}
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
+                    <div className="min-w-[1000px]">
+                        <div className="grid grid-cols-12 gap-0 px-4 py-2 bg-gray-50 border-b border-gray-200 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                            <div className="col-span-1 border-r border-gray-200 px-2 flex items-center">S.No</div>
+                            <div className="col-span-2 border-r border-gray-200 px-2 flex items-center">KPI Name</div>
+                            <div className="col-span-2 border-r border-gray-200 px-2 flex items-center">Assigned To</div>
+                            <div className="col-span-2 border-r border-gray-200 px-2 flex items-center">Target/Actual</div>
+                            <div className="col-span-1 border-r border-gray-200 px-2 flex items-center">Unit</div>
+                            <div className="col-span-1 border-r border-gray-200 px-2 flex items-center">Freq</div>
+                            <div className="col-span-2 border-r border-gray-200 px-2 flex items-center">Status & Due</div>
+                            <div className="col-span-1 px-2 flex items-center justify-center">Actions</div>
+                        </div>
+                        <div className="divide-y divide-gray-100">
+                            {filtered.map((kpi, index) => {
+                                const overdue = kpi.status !== 'Completed' && isPast(new Date(kpi.dueDate));
+                                return (
+                                    <div key={kpi._id} className="grid grid-cols-12 gap-0 px-4 py-2.5 items-center hover:bg-gray-50/80 transition-colors group">
+                                        <div className="col-span-1 border-r border-gray-100 h-full flex items-center px-2 text-[11px] text-gray-400">
+                                            {index + 1}
+                                        </div>
+                                        
+                                        <div className="col-span-2 border-r border-gray-100 h-full flex flex-col justify-center px-2 min-w-0">
+                                            <h4 className="font-bold text-gray-900 text-[12px] truncate uppercase tracking-tight leading-tight">{kpi.title}</h4>
+                                            <span className="text-[9px] text-gray-400 truncate mt-0.5">{kpi.metric}</span>
                                         </div>
 
-                                        <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
-                                            <span className="flex items-center gap-1">
-                                                {kpi.assignedToTeam ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                                                <strong className="text-gray-700">
-                                                    {kpi.assignedToTeam ? kpi.assignedToTeam.name : kpi.assignedToUser?.name || '—'}
-                                                </strong>
+                                        <div className="col-span-2 border-r border-gray-100 h-full flex items-center px-2">
+                                            <span className="text-[11px] font-medium text-gray-700 truncate">
+                                                {kpi.assignedToTeam ? kpi.assignedToTeam.name : kpi.assignedToUser?.name || '—'}
                                             </span>
-                                            <span>{kpi.metric} · {kpi.frequency}</span>
-                                            <span className={overdue ? 'text-red-500 font-semibold' : ''}>
-                                                Due: {format(new Date(kpi.dueDate), 'dd MMM yyyy')}
-                                            </span>
-                                            {kpi.assignedBy && <span>by {kpi.assignedBy.name}</span>}
                                         </div>
 
-                                        {/* Progress Bar */}
-                                        <div className="mt-2.5 flex items-center gap-3">
-                                            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div className="col-span-2 border-r border-gray-100 h-full flex flex-col justify-center px-2">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-[10px] font-bold text-gray-600">{kpi.actual} / {kpi.target}</span>
+                                                <span className="text-[9px] font-bold text-primary">{Math.round(kpi.progress)}%</span>
+                                            </div>
+                                            <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
                                                 <div
-                                                    className={cn('h-full rounded-full transition-all', kpi.status === 'Completed' ? 'bg-emerald-500' : 'bg-primary')}
+                                                    className={cn('h-full transition-all', kpi.status === 'Completed' ? 'bg-emerald-500' : 'bg-primary')}
                                                     style={{ width: `${kpi.progress}%` }}
                                                 />
                                             </div>
-                                            <span className="text-xs font-bold text-gray-600 shrink-0">
-                                                {kpi.actual} / {kpi.target} {kpi.unit} ({kpi.progress}%)
+                                        </div>
+
+                                        <div className="col-span-1 border-r border-gray-100 h-full flex items-center px-2">
+                                            <span className="text-[10px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded">{kpi.unit}</span>
+                                        </div>
+
+                                        <div className="col-span-1 border-r border-gray-100 h-full flex items-center px-2">
+                                            <span className="text-[10px] text-gray-500">{kpi.frequency}</span>
+                                        </div>
+
+                                        <div className="col-span-2 border-r border-gray-100 h-full flex flex-col justify-center px-2 gap-0.5">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className={cn('px-1.5 py-0 flex items-center text-[8px] font-black uppercase rounded border leading-none h-3.5', STATUS_COLORS[kpi.status])}>
+                                                    {kpi.status}
+                                                </span>
+                                                {overdue && (
+                                                    <span className="px-1.5 py-0 flex items-center text-[8px] font-black uppercase bg-red-100 text-red-700 h-3.5">
+                                                        Over
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className={cn('text-[9px] font-bold', overdue ? 'text-red-500' : 'text-gray-500')}>
+                                                {format(new Date(kpi.dueDate), 'dd MMM yy')}
                                             </span>
                                         </div>
-                                    </div>
 
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <button
-                                            onClick={() => openEdit(kpi)}
-                                            className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
-                                            title="Edit"
-                                        >
-                                            <Edit3 className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(kpi._id)}
-                                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                            title="Delete"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="col-span-1 flex justify-center items-center gap-1 px-1">
+                                            <button
+                                                onClick={() => openEdit(kpi)}
+                                                className="p-1 px-2 text-[10px] font-black text-primary hover:bg-primary/10 rounded transition-colors"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(kpi._id)}
+                                                className="p-1 px-2 text-[10px] font-black text-red-600 hover:bg-red-50 rounded transition-colors"
+                                            >
+                                                Del
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
             )}
 
             {/* Create / Edit Sheet */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
                     <SheetHeader>
                         <SheetTitle className="flex items-center gap-2">
                             <Target className="w-5 h-5 text-primary" />
@@ -373,28 +393,8 @@ export default function KPIAssignmentManager() {
                     </SheetHeader>
 
                     <form onSubmit={handleSubmit} className="space-y-5 mt-6">
-                        {/* Title */}
-                        <div className="space-y-1.5">
-                            <Label>KPI Title *</Label>
-                            <Input
-                                required
-                                placeholder="e.g. Increase Q2 Sales Revenue"
-                                value={form.title}
-                                onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-                            />
-                        </div>
+                        {/* Removed Title and Description fields as per request */}
 
-                        {/* Description */}
-                        <div className="space-y-1.5">
-                            <Label>Description</Label>
-                            <textarea
-                                className="w-full border rounded-lg p-2.5 text-sm resize-none text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                rows={2}
-                                placeholder="Optional details about this KPI..."
-                                value={form.description}
-                                onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                            />
-                        </div>
 
                         {/* Metric + Unit */}
                         <div className="grid grid-cols-2 gap-3">

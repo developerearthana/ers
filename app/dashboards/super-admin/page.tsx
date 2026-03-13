@@ -37,7 +37,7 @@ export default function SuperAdminDashboard() {
                 if (leavesRes.success && leavesRes.data) {
                     setLeaveRequests(leavesRes.data.filter((r: any) => r.status === 'Pending'));
                 }
-                
+
                 // Load KPIs using the stabilized callback
                 await loadKPIs();
             } catch (error) {

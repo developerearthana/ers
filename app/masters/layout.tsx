@@ -16,10 +16,8 @@ export default function MastersLayout({
         { name: 'User Types', href: '/masters/usertypes', icon: Users },
         { name: 'Users', href: '/masters/users', icon: Users },
         { name: 'Teams', href: '/masters/teams', icon: Network },
-        { name: 'KPIs', href: '/masters/kpi-metrics', icon: BarChart3 },
         { name: 'Vendors', href: '/masters/vendor-categories', icon: Tag },
         { name: 'Templates', href: '/masters/project-templates', icon: Layers },
-        { name: 'Assignments', href: '/masters/kpi-assignments', icon: Target },
     ];
 
     const pathname = usePathname();

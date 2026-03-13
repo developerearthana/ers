@@ -185,13 +185,19 @@ const TeamSchema = z.object({
 });
 
 export const getTeams = async () => {
-    await connectToDatabase();
-    // Populate team lead and members from User model
-    const teams = await Team.find()
-        .populate('teamLead', 'name role dept jobTitle image')
-        .populate('members', 'name role dept jobTitle image')
-        .sort({ createdAt: -1 });
-    return JSON.parse(JSON.stringify(teams));
+    try {
+        await connectToDatabase();
+        // Populate team lead and members from User model
+        const teams = await Team.find()
+            .populate('teamLead', 'name role dept jobTitle image')
+            .populate('members', 'name role dept jobTitle image')
+            .sort({ createdAt: -1 })
+            .lean();
+        return JSON.parse(JSON.stringify(teams));
+    } catch (error) {
+        console.error("Error fetching teams:", error);
+        return [];
+    }
 };
 
 export const createTeam = createJSONAction(TeamSchema, async (data) => {

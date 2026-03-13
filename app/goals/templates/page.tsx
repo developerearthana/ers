@@ -6,19 +6,25 @@ import { PageWrapper, CardWrapper } from '@/components/ui/page-wrapper';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter, LayoutTemplate, Tags, Search, Pencil, Trash2, ArrowLeft } from 'lucide-react';
 import { getKPITemplates, createKPITemplate, updateKPITemplate, deleteKPITemplate } from '@/app/actions/kpi';
-import { getDepartments } from '@/app/actions/organization';
+import { getDepartments, getCompany, getSubsidiaries } from '@/app/actions/organization';
 import { toast } from 'sonner';
 
 const emptyTemplate = {
     id: '',
     name: '',
+    industry: 'Main Company',
+    subsidiary: 'Main Subsidiary',
     department: '',
-    description: ''
+    description: '',
+    unit: 'Count',
+    frequency: 'Monthly'
 };
 
 export default function KPITemplatesPage() {
     const [templates, setTemplates] = useState<any[]>([]);
     const [departments, setDepartments] = useState<any[]>([]);
+    const [companyList, setCompanyList] = useState<string[]>(['General']);
+    const [subsidiaries, setSubsidiaries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedDept, setSelectedDept] = useState('All');
@@ -35,12 +41,23 @@ export default function KPITemplatesPage() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const deptRes = await getDepartments();
-            const tplRes = await getKPITemplates({ search: searchQuery, department: selectedDept });
+            const [deptRes, compRes, subRes] = await Promise.all([
+                getDepartments(),
+                getCompany(),
+                getSubsidiaries()
+            ]);
             
             if (deptRes && Array.isArray(deptRes)) {
                 setDepartments(deptRes);
             }
+            if (compRes && compRes.name) {
+                setCompanyList(['General', compRes.name]);
+            }
+            if (Array.isArray(subRes)) {
+                setSubsidiaries(subRes);
+            }
+
+            const tplRes = await getKPITemplates({ search: searchQuery, department: selectedDept });
             if (tplRes.success && tplRes.data) {
                 setTemplates(tplRes.data);
             }
@@ -70,8 +87,12 @@ export default function KPITemplatesPage() {
         setEditingTemplate({
             id: template._id || template.id,
             name: template.name || '',
+            industry: template.industry || 'Main Company',
+            subsidiary: template.subsidiary || 'Main Subsidiary',
             department: template.department || '',
-            description: template.description || ''
+            description: template.description || '',
+            unit: template.unit || 'Count',
+            frequency: template.frequency || 'Monthly'
         });
         setView('form');
     };
@@ -127,44 +148,98 @@ export default function KPITemplatesPage() {
                 <div className="bg-card p-8 rounded-xl border border-border shadow-sm">
                     <form onSubmit={handleSave} className="space-y-8">
                         <div className="space-y-6">
-                            <h2 className="text-xl font-semibold flex items-center gap-2 border-b pb-4">
-                                <LayoutTemplate className="w-5 h-5 text-primary" />
+                            <h2 className="text-xl font-semibold border-b pb-4">
                                 KPI Configuration
                             </h2>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-foreground">KPI Name <span className="text-destructive">*</span></label>
-                                <input
-                                    required
-                                    className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200"
-                                    placeholder="e.g., Target Revenue Generated"
-                                    value={editingTemplate.name}
-                                    onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">A clear, actionable name for this metric.</p>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-foreground">Company</label>
+                                    <select
+                                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200"
+                                        value={editingTemplate.industry}
+                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, industry: e.target.value })}
+                                    >
+                                        {companyList.map(comp => (
+                                            <option key={comp} value={comp}>{comp}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-foreground">Subsidiary</label>
+                                    <select
+                                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200"
+                                        value={editingTemplate.subsidiary}
+                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, subsidiary: e.target.value })}
+                                    >
+                                        <option value="Main Subsidiary">Main Subsidiary</option>
+                                        {subsidiaries.map(sub => (
+                                            <option key={sub._id || sub.id} value={sub.name}>{sub.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
-                            <div className="space-y-2 pt-2">
-                                <label className="text-sm font-semibold text-foreground">Department <span className="text-destructive">*</span></label>
-                                <select
-                                    required
-                                    className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200"
-                                    value={editingTemplate.department}
-                                    onChange={(e) => setEditingTemplate({ ...editingTemplate, department: e.target.value })}
-                                >
-                                    <option value="" disabled>Select a department</option>
-                                    {departments.map((dept) => (
-                                        <option key={dept._id || dept.id} value={dept.name}>
-                                            {dept.name}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="grid grid-cols-2 gap-6 pt-2">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-foreground">Department <span className="text-destructive">*</span></label>
+                                    <select
+                                        required
+                                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200"
+                                        value={editingTemplate.department}
+                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, department: e.target.value })}
+                                    >
+                                        <option value="" disabled>Select a department</option>
+                                        {departments.map((dept) => (
+                                            <option key={dept._id || dept.id} value={dept.name}>
+                                                {dept.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-foreground">KPI Name <span className="text-destructive">*</span></label>
+                                    <input
+                                        required
+                                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200"
+                                        placeholder="e.g., Target Revenue"
+                                        value={editingTemplate.name}
+                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6 pt-2">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-foreground">Unit</label>
+                                    <select
+                                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200"
+                                        value={editingTemplate.unit}
+                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, unit: e.target.value })}
+                                    >
+                                        {['Count', '%', 'INR', 'USD', 'Hours', 'Days', 'Rating'].map(u => (
+                                            <option key={u} value={u}>{u}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-foreground">Frequency</label>
+                                    <select
+                                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200"
+                                        value={editingTemplate.frequency}
+                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, frequency: e.target.value as any })}
+                                    >
+                                        {['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'].map(f => (
+                                            <option key={f} value={f}>{f}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
                             <div className="space-y-2 pt-2">
                                 <label className="text-sm font-semibold text-foreground">Description</label>
                                 <textarea
-                                    className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200 min-h-[160px] resize-y"
-                                    placeholder="Explain the purpose of this KPI, how it's measured, and any other relevant guidelines..."
+                                    className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all duration-200 min-h-[100px] resize-y"
+                                    placeholder="Explain the purpose of this KPI..."
                                     value={editingTemplate.description}
                                     onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
                                 />
@@ -234,40 +309,80 @@ export default function KPITemplatesPage() {
                     No templates found matching your criteria.
                 </div>
             ) : (
-                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {templates.map((template) => (
-                        <CardWrapper key={template._id || template.id} className="glass-card p-6 rounded-xl hover:shadow-lg hover:border-primary/20 transition-all group flex flex-col h-full bg-card">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-2.5 bg-primary/10 text-primary rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                                    <LayoutTemplate className="w-5 h-5" />
-                                </div>
-                            </div>
-                            <h3 className="font-bold text-foreground mb-2.5 text-lg">{template.name}</h3>
-                            
-                            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-accent/50 px-2.5 py-1.5 rounded-md border border-border w-fit mb-4">
-                                <Tags className="w-3.5 h-3.5" /> {template.department}
-                            </div>
-                            
-                            <p className="text-sm text-muted-foreground mb-8 line-clamp-3 flex-1 leading-relaxed">
-                                {template.description || "No description provided."}
-                            </p>
-
-                            <div className="grid grid-cols-3 gap-3 mt-auto pt-4 border-t border-border/50">
-                                <Link
-                                    href={`/goals/plan?template=${template._id || template.id}`}
-                                    className="inline-flex h-9 items-center justify-center rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                <div className="bg-card border border-border rounded-xl shadow-sm overflow-x-auto">
+                    <div className="min-w-[1200px]">
+                        <div className="grid grid-cols-12 gap-0 px-4 py-3 bg-muted/30 border-b border-border text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            <div className="col-span-1 border-r border-border px-2">S.No</div>
+                            <div className="col-span-2 border-r border-border px-2">KPI Name</div>
+                            <div className="col-span-1 border-r border-border px-2">Company</div>
+                            <div className="col-span-1 border-r border-border px-2">Subsidiary</div>
+                            <div className="col-span-1 border-r border-border px-2">Department</div>
+                            <div className="col-span-1 border-r border-border px-2">Unit</div>
+                            <div className="col-span-1 border-r border-border px-2">Frequency</div>
+                            <div className="col-span-2 border-r border-border px-2">Description</div>
+                            <div className="col-span-2 px-2 text-center">Actions</div>
+                        </div>
+                        <div className="divide-y divide-border">
+                            {templates.map((template, index) => (
+                                <div 
+                                    key={template._id || template.id} 
+                                    className="grid grid-cols-12 gap-0 px-4 py-3 items-center hover:bg-muted/10 transition-colors group"
                                 >
-                                    Use
-                                </Link>
-                                <Button variant="outline" className="text-xs h-9 font-semibold rounded-lg hover:bg-accent" onClick={() => openEdit(template)}>
-                                    <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
-                                </Button>
-                                <Button variant="outline" className="text-xs h-9 font-semibold text-destructive rounded-lg hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all duration-200" onClick={() => handleDelete(template._id || template.id)}>
-                                    <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete
-                                </Button>
-                            </div>
-                        </CardWrapper>
-                    ))}
+                                    <div className="col-span-1 text-xs text-muted-foreground border-r border-border h-full flex items-center px-2">
+                                        {index + 1}
+                                    </div>
+                                    <div className="col-span-2 border-r border-border h-full flex items-center px-2">
+                                        <span className="font-semibold text-foreground text-[13px]">{template.name}</span>
+                                    </div>
+                                    <div className="col-span-1 border-r border-border h-full flex items-center px-2">
+                                        <span className="text-[12px] text-muted-foreground">{template.industry || '—'}</span>
+                                    </div>
+                                    <div className="col-span-1 border-r border-border h-full flex items-center px-2">
+                                        <span className="text-[12px] text-muted-foreground">{template.subsidiary || '—'}</span>
+                                    </div>
+                                    <div className="col-span-1 border-r border-border h-full flex items-center px-2">
+                                        <span className="text-[12px] text-muted-foreground font-medium">{template.department}</span>
+                                    </div>
+                                    <div className="col-span-1 border-r border-border h-full flex items-center px-2">
+                                        <span className="text-[11px] font-bold text-primary px-2 py-0.5 bg-primary/5 rounded">{template.unit || 'Count'}</span>
+                                    </div>
+                                    <div className="col-span-1 border-r border-border h-full flex items-center px-2">
+                                        <span className="text-[11px] text-muted-foreground">{template.frequency || 'Monthly'}</span>
+                                    </div>
+                                    <div className="col-span-2 border-r border-border h-full flex items-center px-2">
+                                        <p className="text-[12px] text-muted-foreground line-clamp-2 leading-tight">
+                                            {template.description || "—"}
+                                        </p>
+                                    </div>
+
+                                    <div className="col-span-2 flex justify-center items-center gap-1.5 px-2">
+                                        <Link
+                                            href={`/goals/plan?template=${template._id || template.id}`}
+                                            className="h-7 px-3 inline-flex items-center justify-center rounded bg-primary text-primary-foreground text-[11px] font-bold hover:brightness-110"
+                                        >
+                                            Use
+                                        </Link>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-7 px-2 text-[11px] font-bold text-primary hover:bg-primary/10" 
+                                            onClick={() => openEdit(template)}
+                                        >
+                                            Edit
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-7 px-2 text-[11px] font-bold text-red-600 hover:bg-red-50" 
+                                            onClick={() => handleDelete(template._id || template.id)}
+                                        >
+                                            Delete
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
         </PageWrapper>

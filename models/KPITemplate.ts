@@ -2,10 +2,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IKPITemplate extends Document {
     name: string;
-    industry: string; // e.g., "Construction", "IT", "Manufacturing"
-    department: string; // e.g., "Sales", "Engineering", "HR"
+    industry: string; // Interpret as Company
+    subsidiary: string;
+    department: string;
     description: string;
-    unit: string; // e.g., "%", "Currency", "Count"
+    unit: string;
     calcMethod: 'Sum' | 'Average' | 'Latest';
     defaultTarget: string;
     frequency: 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
@@ -17,7 +18,8 @@ export interface IKPITemplate extends Document {
 const KPITemplateSchema: Schema = new Schema(
     {
         name: { type: String, required: true },
-        industry: { type: String, required: true }, // Taxonomies for filtering
+        industry: { type: String, required: true }, // Company
+        subsidiary: { type: String },
         department: { type: String, required: true },
         description: { type: String },
         unit: { type: String, default: 'Count' },

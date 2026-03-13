@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Users, Clock, FileText, TrendingUp, ArrowUpRight, CheckSquare, Target, Loader2 } from "lucide-react";
+import { Users, Clock, FileText, TrendingUp, ArrowUpRight, CheckSquare, Target, Loader2, Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { getUpcomingAlerts } from "@/app/actions/activity/calendar";
+import { format } from "date-fns";
 import MyKPIs from "@/components/kpi/MyKPIs";
 import { getTeams } from "@/app/actions/organization";
 import { getMyKPIAssignments } from "@/app/actions/kpi-assignments";
@@ -26,14 +29,20 @@ type KPIType = {
 export default function ManagerDashboard() {
     const [teams, setTeams] = useState<TeamType[]>([]);
     const [kpis, setKpis] = useState<KPIType[]>([]);
+    const [alerts, setAlerts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [teamsRes, kpisRes] = await Promise.all([getTeams(), getMyKPIAssignments()]);
+            const [teamsRes, kpisRes, alertsRes] = await Promise.all([
+                getTeams(), 
+                getMyKPIAssignments(),
+                getUpcomingAlerts()
+            ]);
             setTeams((teamsRes || []) as TeamType[]);
             if (kpisRes.success) setKpis((kpisRes.data || []) as KPIType[]);
+            if (alertsRes.success) setAlerts(alertsRes.data);
         } finally {
             setLoading(false);
         }

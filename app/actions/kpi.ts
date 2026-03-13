@@ -70,7 +70,8 @@ export const deleteKPIEntry = async (id: string) => {
 
 const KPITemplateSchema = z.object({
     name: z.string().min(1),
-    industry: z.string().optional().default('General'),
+    industry: z.string().optional().default('Main Company'),
+    subsidiary: z.string().optional().default('Main Subsidiary'),
     department: z.string().min(1),
     description: z.string().optional(),
     unit: z.string().default('Count'),

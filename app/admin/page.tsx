@@ -1,8 +1,11 @@
 "use client";
 
-import { Users, Settings, Shield, Globe, Database, ShieldAlert, Server, Activity, Cpu, ArrowUpRight } from 'lucide-react';
+import { Users, Settings, Shield, Globe, Database, ShieldAlert, Server, Activity, Cpu, ArrowUpRight, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getAdminDashboardData } from '@/app/actions/admin';
+import { getUpcomingAlerts } from '@/app/actions/activity/calendar';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function AdminDashboard() {
@@ -13,6 +16,7 @@ export default function AdminDashboard() {
         serverLoad: "0%"
     });
     const [logs, setLogs] = useState<any[]>([]);
+    const [alerts, setAlerts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -21,6 +25,10 @@ export default function AdminDashboard() {
             if (res.success && res.data) {
                 setStats(res.data.stats);
                 setLogs(res.data.logs);
+            }
+            const alertsRes = await getUpcomingAlerts();
+            if (alertsRes.success) {
+                setAlerts(alertsRes.data);
             }
             setLoading(false);
         };
@@ -42,6 +50,30 @@ export default function AdminDashboard() {
                 <h1 className="text-2xl font-bold text-gray-900">System Overview</h1>
                 <p className="text-gray-500">Monitor system health and performance.</p>
             </div>
+
+            {/* Alerts Section */}
+            {alerts.length > 0 && (
+                <div className="grid grid-cols-1 gap-4">
+                    {alerts.map((alert: any) => (
+                        <div key={alert._id || alert.id} className="flex items-center justify-between bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                                    <Bell className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-amber-900 text-sm">{alert.title}</h3>
+                                    <p className="text-amber-700 text-xs">
+                                        Starting at {format(new Date(alert.start), 'HH:mm')} ({format(new Date(alert.start), 'MMM d')})
+                                    </p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-amber-700 hover:bg-amber-100" onClick={() => setAlerts(prev => prev.filter(a => (a._id || a.id) !== (alert._id || alert.id)))}>
+                                Dismiss
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* KPI Cards Standardized */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

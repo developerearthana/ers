@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from 'react';
-import { Building2, Layers, Users, Network, Briefcase, ArrowRight, Tag, BarChart3, LayoutGrid, Grid2X2, CheckSquare } from 'lucide-react';
+import { Building2, Layers, Users, Network, Briefcase, ArrowRight, Tag, BarChart3, LayoutGrid, Grid2X2, CheckSquare, Bell } from 'lucide-react';
+import { getUpcomingAlerts } from '@/app/actions/activity/calendar';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function MastersDashboard() {
@@ -12,12 +15,21 @@ export default function MastersDashboard() {
         { name: 'Teams', desc: 'Organize workforce groups', href: '/masters/teams', icon: Network, color: 'text-green-600', bg: 'bg-green-100' },
         { name: 'Users', desc: 'Manage access & roles', href: '/masters/users', icon: Users, color: 'text-pink-600', bg: 'bg-white' },
         { name: 'Vendor Categories', desc: 'Classify vendor types', href: '/masters/vendor-categories', icon: Tag, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-        { name: 'KPI Metrics', desc: 'Define performance indicators', href: '/masters/kpi-metrics', icon: BarChart3, color: 'text-teal-600', bg: 'bg-teal-100' },
-        { name: 'KPI Assignment', desc: 'Assign goals to teams & users', href: '/masters/kpi-assignments', icon: CheckSquare, color: 'text-rose-600', bg: 'bg-rose-100' },
         { name: 'Project Templates', desc: 'Configure stage workflows', href: '/masters/project-templates', icon: Layers, color: 'text-indigo-600', bg: 'bg-indigo-100' },
     ];
 
     const [viewMode, setViewMode] = useState<'grid-sm' | 'grid-md' | 'list'>('grid-md');
+    const [alerts, setAlerts] = useState<any[]>([]);
+
+    useEffect(() => {
+        const loadAlerts = async () => {
+            const res = await getUpcomingAlerts();
+            if (res.success) {
+                setAlerts(res.data);
+            }
+        };
+        loadAlerts();
+    }, []);
 
     return (
         <div className="space-y-6">
@@ -52,6 +64,30 @@ export default function MastersDashboard() {
                     </button>
                 </div>
             </div>
+
+            {/* Alerts Section */}
+            {alerts.length > 0 && (
+                <div className="grid grid-cols-1 gap-4 mb-8">
+                    {alerts.map((alert: any) => (
+                        <div key={alert._id || alert.id} className="flex items-center justify-between bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                                    <Bell className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-amber-900 text-sm">{alert.title}</h3>
+                                    <p className="text-amber-700 text-xs">
+                                        Starting at {format(new Date(alert.start), 'HH:mm')} ({format(new Date(alert.start), 'MMM d')})
+                                    </p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-amber-700 hover:bg-amber-100" onClick={() => setAlerts(prev => prev.filter(a => (a._id || a.id) !== (alert._id || alert.id)))}>
+                                Dismiss
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             <div className={`
                 ${viewMode === 'list' ? 'flex flex-col gap-3' : ''}

@@ -3,6 +3,7 @@
 import { auth } from '@/auth';
 import Conversation from '@/models/Conversation';
 import Message from '@/models/Message';
+import User from '@/models/User';
 import connectToDatabase from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
@@ -22,18 +23,30 @@ export async function sendMessage(conversationId: string, content: string, attac
             readBy: [senderId]
         });
 
-        await newMessage.save();
 
-        // Update conversation: Set last message, update time, and UN-ARCHIVE for all participants
-        await Conversation.findByIdAndUpdate(conversationId, {
-            lastMessage: newMessage._id,
-            lastMessageAt: new Date(),
-            $pull: { archivedBy: { $exists: true } } // Un-archive for everyone when a new message comes
-        });
+        const savedMessage = await newMessage.save();
+        const plainMessage = savedMessage.toObject();
 
-        // Unread count logic would go here (increment for others)
+        // Update conversation: Set last message, update time, and un-archive for all
+        const conv = await Conversation.findById(conversationId);
+        if (conv) {
+            conv.lastMessage = plainMessage._id;
+            conv.lastMessageAt = new Date();
+            conv.archivedBy = [];
+            
+            // Increment unread counts for everyone EXCEPT the sender
+            const participants = conv.participants || [];
+            participants.forEach((pId: string) => {
+                if (String(pId) !== String(senderId)) {
+                    const current = conv.unreadCounts.get(String(pId)) || 0;
+                    conv.unreadCounts.set(String(pId), current + 1);
+                }
+            });
+            
+            await conv.save();
+        }
 
-        return { success: true, data: JSON.parse(JSON.stringify(newMessage)) };
+        return { success: true, data: JSON.parse(JSON.stringify(plainMessage)) };
     } catch (error: any) {
         console.error("Send Message Error:", error);
         return { success: false, error: error.message };
@@ -48,7 +61,8 @@ export async function getMessages(conversationId: string, limit = 50) {
 
         const messages = await Message.find({ conversationId })
             .sort({ createdAt: 1 })
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         return { success: true, data: JSON.parse(JSON.stringify(messages)) };
     } catch (error: any) {
@@ -64,8 +78,11 @@ export async function getConversations() {
 
         const conversations = await Conversation.find({
             participants: session.user.id,
-            archivedBy: { $ne: session.user.id } // Filter out archived
-        }).sort({ lastMessageAt: -1 }).populate('lastMessage');
+            archivedBy: { $ne: session.user.id }
+        })
+        .sort({ lastMessageAt: -1 })
+        .populate('lastMessage')
+        .lean();
 
         return { success: true, data: JSON.parse(JSON.stringify(conversations)) };
     } catch (error: any) {
@@ -113,7 +130,7 @@ export async function createConversation(participantIds: string[], type: 'Indivi
     }
 }
 
-import User from '@/models/User';
+// getUsersForChat is already correctly implemented below
 
 export async function getUsersForChat() {
     try {
@@ -123,7 +140,8 @@ export async function getUsersForChat() {
 
         const users = await User.find({ _id: { $ne: session.user.id } })
             .select('name email image role')
-            .sort({ name: 1 });
+            .sort({ name: 1 })
+            .lean();
 
         return { success: true, data: JSON.parse(JSON.stringify(users)) };
     } catch (error: any) {
@@ -192,6 +210,28 @@ export async function deleteAllConversations() {
 
         return { success: true };
     } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function markAsRead(conversationId: string) {
+    try {
+        await connectToDatabase();
+        const session = await auth();
+        if (!session?.user?.id) throw new Error('Unauthorized');
+
+        const userId = session.user.id;
+        
+        // Find the conversation
+        const conv = await Conversation.findById(conversationId);
+        if (conv && conv.unreadCounts) {
+            conv.unreadCounts.set(String(userId), 0);
+            await conv.save();
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Mark as read error:", error);
         return { success: false, error: error.message };
     }
 }

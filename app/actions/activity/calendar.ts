@@ -157,16 +157,15 @@ export async function getUpcomingAlerts() {
         if (!session?.user?.id) throw new Error('Unauthorized');
 
         const now = new Date();
-        const tomorrow = addDays(now, 1);
+        // Use start of today so events from earlier in the day are included
+        const rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0); // startOfDay
+        const rangeEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 23, 59, 59, 999); // endOfTomorrow
 
-        // Fetch events with alerts enabled that are upcoming (simple check for today/tomorrow)
-        // Note: For recurring events, this simple query misses them. 
-        // Ideally reuse getEvents logic for a short range.
-
-        const response = await getEvents(now, tomorrow);
+        const response = await getEvents(rangeStart, rangeEnd);
         if (!response.success) throw new Error(response.error);
 
         const events = response.data;
+        // Only show events with alert enabled
         const alertEvents = events.filter((e: any) => e.alert === true);
 
         return { success: true, data: alertEvents };

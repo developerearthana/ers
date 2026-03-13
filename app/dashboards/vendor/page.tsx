@@ -5,10 +5,15 @@ import { Truck, FileText, Package, DollarSign } from 'lucide-react';
 import { getVendorStats } from '@/app/actions/purchase';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { getUpcomingAlerts } from '@/app/actions/activity/calendar';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
+import { Bell } from 'lucide-react';
 
 export default function VendorDashboard() {
     const [stats, setStats] = useState<any>({ activeContracts: 0, pendingOrders: 0, pendingValue: 0, performance: 0 });
     const [vendorName] = useState("TechFlow Solutions"); // Simulated logged-in vendor
+    const [alerts, setAlerts] = useState<any[]>([]);
 
     useEffect(() => {
         const loadStats = async () => {
@@ -17,6 +22,11 @@ export default function VendorDashboard() {
                 setStats(res.data);
             } else {
                 toast.error("Failed to load vendor stats");
+            }
+
+            const alertsRes = await getUpcomingAlerts();
+            if (alertsRes.success) {
+                setAlerts(alertsRes.data);
             }
         };
         loadStats();
@@ -35,6 +45,7 @@ export default function VendorDashboard() {
                 <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600">Vendor Portal</h1>
                 <p className="text-gray-500 mt-1">Welcome, {vendorName}. Manage your supply chain.</p>
             </div>
+
 
             <div className="grid gap-4 md:grid-cols-4 mb-6">
                 {statCards.map((stat, i) => (
