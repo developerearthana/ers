@@ -1,26 +1,27 @@
-import { auth } from '@/auth';
-import { redirect } from 'next/navigation';
+"use client";
+
+import { useEffect } from 'react';
+import { signOut } from 'next-auth/react';
+import { Logo } from '@/components/ui/logo';
 
 /**
  * Root URL should always land on the login page as per user requirement.
- * This ensures users do not land directly into a "pre-logged-in" portal
- * upon clicking the app link.
+ * We actively destroy any lingering session when hitting the root URL
+ * to ensure users do not land directly into a "pre-logged-in" portal.
  */
-export const dynamic = 'force-dynamic';
+export default function RootPage() {
+    useEffect(() => {
+        // ALWAYS clear the session when hitting the root URL, 
+        // to strictly enforce the "always start with login page" rule.
+        signOut({ callbackUrl: '/login' });
+    }, []);
 
-export default async function RootPage() {
-    const session = await auth();
-
-    if (!session || !session.user) {
-        redirect('/login');
-    }
-
-    const role = session.user.role;
-
-    if (role === 'vendor') redirect('/dashboards/vendor');
-    else if (role === 'customer') redirect('/dashboards/customer');
-    else if (role === 'manager') redirect('/dashboards/manager');
-    else if (role === 'staff' || role === 'user' || role === 'employee') redirect('/dashboards/employee');
-    else if (role === 'super-admin' || role === 'admin') redirect('/dashboards/super-admin');
-    else redirect('/dashboards/employee');
+    return (
+        <div className="flex h-screen w-screen items-center justify-center bg-background">
+            <div className="animate-pulse flex flex-col items-center gap-6">
+                <Logo variant="icon" className="h-16 w-16 opacity-50" />
+                <p className="text-sm font-medium text-muted-foreground">Securing session...</p>
+            </div>
+        </div>
+    );
 }
