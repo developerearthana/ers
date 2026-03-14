@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation';
  * This ensures users do not land directly into a "pre-logged-in" portal
  * upon clicking the app link.
  */
+export const dynamic = 'force-dynamic';
+
 export default async function RootPage() {
     const session = await auth();
 

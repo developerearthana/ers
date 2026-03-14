@@ -501,14 +501,6 @@ export default function ChatInterface() {
                                     {activeConversation?.type === 'Group' && <p className="text-[10px] text-gray-500 font-medium">{activeConversation.participants.length} Members</p>}
                                 </div>
                             </div>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={handleClearHistory} className="text-red-600">Clear History</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">

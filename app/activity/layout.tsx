@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, Calendar, CheckSquare, MessageSquare, FileText } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 const activityLinks = [
     { name: 'Dashboard', href: '/activity', icon: LayoutDashboard },
@@ -19,11 +20,20 @@ export default function ActivityLayout({
     children: React.ReactNode;
 }) {
     const pathname = usePathname();
+    const { data: session } = useSession();
+
+    const role = session?.user?.role?.toLowerCase() || '';
+    const isAdmin = role === 'admin' || role === 'super-admin' || role === 'hr' || role === 'manager';
+
+    const visibleLinks = activityLinks.filter(link => {
+        if (link.name === 'Documents' && isAdmin) return false;
+        return true;
+    });
 
     return (
         <div className="flex flex-col h-full gap-6">
             <div className="flex items-center gap-6 border-b pb-4 overflow-x-auto">
-                {activityLinks.map((link) => {
+                {visibleLinks.map((link) => {
                     const Icon = link.icon;
                     const isActive = pathname === link.href;
                     return (

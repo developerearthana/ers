@@ -380,13 +380,8 @@ export default function DocumentManager() {
                     <div className="flex-1 bg-white p-4 overflow-hidden flex items-center justify-center">
                         {previewFile?.type.includes('image') ? (
                             <img src={previewFile?.url} alt={previewFile?.name} className="max-w-full max-h-full object-contain shadow-lg" />
-                        ) : previewFile?.type.includes('pdf') ? (
-                            <iframe src={previewFile?.url} className="w-full h-full rounded shadow-lg" title={previewFile?.name} />
                         ) : (
-                            <div className="text-center text-gray-500">
-                                <File className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                                <p>Preview not available for this file type</p>
-                            </div>
+                            <iframe src={previewFile?.url} className="w-full h-full rounded shadow-lg bg-gray-50 border-none" title={previewFile?.name} />
                         )}
                     </div>
                 </DialogContent>

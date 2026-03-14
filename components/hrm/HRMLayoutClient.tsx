@@ -18,11 +18,11 @@ const ALL_HRM_LINKS = [
     { name: 'Payroll', href: '/hrm/payroll', icon: Banknote, adminOnly: true },
     { name: 'Leave', href: '/hrm/leave', icon: CalendarDays, adminOnly: false },
     { name: 'Staff Access', href: '/hrm/staff-access', icon: Shield, adminOnly: true },
-    { name: 'Documents', href: '/hrm/documents', icon: Briefcase, adminOnly: false },
+    { name: 'Documents', href: '/hrm/documents', icon: Briefcase, adminOnly: true },
     { name: 'Interview', href: '/hrm/interview', icon: Users, adminOnly: true },
 ];
 
-const STAFF_ALLOWED = ['/hrm/attendance', '/hrm/leave', '/hrm/documents'];
+const STAFF_ALLOWED = ['/hrm/attendance', '/hrm/leave'];
 
 function isAdminRole(role: string) {
     if (!role) return false;

@@ -15,10 +15,10 @@ export async function uploadFile(formData: FormData) {
         }
 
         // Limit size for Data URL storage to avoid bloating MongoDB
-        // 5 MB is a safe limit for Data URLs (approx 6.7 MB base64 string)
-        const MAX_DATA_URL_SIZE = 5 * 1024 * 1024; 
+        // 10 MB is a safe limit for Data URLs (approx 13.3 MB base64 string, below 16MB MongoDB document limit)
+        const MAX_DATA_URL_SIZE = 10 * 1024 * 1024; 
         if (file.size > MAX_DATA_URL_SIZE) {
-            return { error: `File too large for live persistence. Maximum 5 MB allowed for logos/documents in this version.` };
+            return { error: `File too large for live persistence. Maximum 10 MB allowed for logos/documents in this version.` };
         }
 
         const bytes = await file.arrayBuffer();

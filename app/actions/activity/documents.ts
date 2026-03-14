@@ -5,20 +5,7 @@ import DocumentModel from '@/models/Document';
 import FolderModel from '@/models/Folder';
 import connectToDatabase from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import fs from 'fs/promises';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid'; // Need to check if uuid available or use random string
-
-// Ensure upload dir exists
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
-
-async function ensureUploadDir() {
-    try {
-        await fs.access(UPLOAD_DIR);
-    } catch {
-        await fs.mkdir(UPLOAD_DIR, { recursive: true });
-    }
-}
+// Removed fs.writeFile dependencies as the application runs on ephemeral live storage. files are stored as Base64 strings.
 
 export async function uploadFile(formData: FormData) {
     try {
@@ -35,16 +22,23 @@ export async function uploadFile(formData: FormData) {
 
         if (!file) throw new Error('No file provided');
 
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const uniqueName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const filePath = path.join(UPLOAD_DIR, uniqueName);
+        // 10 MB Limit matching the vault configurations for consistency
+        const MAX_DATA_URL_SIZE = 10 * 1024 * 1024; 
+        if (file.size > MAX_DATA_URL_SIZE) {
+            throw new Error(`File too large for live persistence. Maximum 10 MB allowed.`);
+        }
 
-        await fs.writeFile(filePath, buffer);
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        
+        // Convert array buffer straight to a live-safe Base64 encoded string format
+        const base64String = buffer.toString('base64');
+        const publicUrl = `data:${file.type};base64,${base64String}`;
 
         const newDoc = new DocumentModel({
             name: file.name,
             folderId: folderId || undefined,
-            url: `/uploads/${uniqueName}`,
+            url: publicUrl,
             type: file.type,
             size: file.size,
             uploadedBy: session.user.id
@@ -118,13 +112,7 @@ export async function deleteItem(id: string, type: 'file' | 'folder') {
         if (type === 'file') {
             const doc = await DocumentModel.findById(id);
             if (doc) {
-                // Try delete file from disk
-                try {
-                    const filePath = path.join(process.cwd(), 'public', doc.url);
-                    await fs.unlink(filePath);
-                } catch (e) {
-                    console.error("File delete warning:", e);
-                }
+                // Deleting the document from MongoDB removes the file since it is baked into the URL Field.
                 await DocumentModel.findByIdAndDelete(id);
             }
         } else {

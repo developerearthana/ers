@@ -2,8 +2,39 @@
 
 import connectToDatabase from "@/lib/db";
 import Document from "@/models/Document";
+import User from "@/models/User";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+
+/**
+ * Get users for document vault filtering
+ */
+export async function getVaultUsers() {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) throw new Error("Unauthorized");
+
+        const userRole = session.user.role?.toLowerCase() || "";
+        const isAdminOrHR =
+            userRole.includes("admin") ||
+            userRole.includes("manager") ||
+            userRole.includes("hr");
+
+        if (!isAdminOrHR) {
+            return { success: true, data: [] };
+        }
+
+        await connectToDatabase();
+        const users = await User.find({})
+            .select('name email role')
+            .sort({ name: 1 })
+            .lean();
+            
+        return { success: true, data: JSON.parse(JSON.stringify(users)) };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
 
 /**
  * Get HRM documents.
@@ -32,10 +63,6 @@ export async function getHRMDocuments() {
     }
 }
 
-/**
- * Upload a new document.
- * - Only Admin / HR / Manager can upload documents (on behalf of anyone).
- */
 export async function uploadHRMDocument(data: {
     name: string;
     url: string;
@@ -47,15 +74,7 @@ export async function uploadHRMDocument(data: {
         const session = await auth();
         if (!session?.user?.id) throw new Error("Unauthorized");
 
-        const userRole = session.user.role?.toLowerCase() || "";
-        const isAdminOrHR =
-            userRole.includes("admin") ||
-            userRole.includes("manager") ||
-            userRole.includes("hr");
-
-        if (!isAdminOrHR) {
-            throw new Error("Only HR Admin can upload documents.");
-        }
+        // Anyone can upload their own documents
 
         await connectToDatabase();
 
@@ -91,7 +110,11 @@ export async function deleteHRMDocument(id: string) {
             userRole.includes("hr");
 
         if (!isAdminOrHR) {
-            throw new Error("Only HR Admin can delete documents.");
+            const doc = await Document.findById(id);
+            if (!doc) throw new Error("Document not found");
+            if (doc.uploadedBy !== session.user.id) {
+                throw new Error("You can only delete your own documents.");
+            }
         }
 
         await connectToDatabase();

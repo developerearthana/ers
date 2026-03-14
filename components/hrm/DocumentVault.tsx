@@ -2,14 +2,23 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, Upload, Shield, CheckCircle, Trash2, Loader2, Download, FileText } from 'lucide-react';
+import { Eye, Upload, Shield, CheckCircle, Trash2, Loader2, Download, FileText, File } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CardWrapper } from '@/components/ui/page-wrapper';
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { format } from 'date-fns';
+import { ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
-import { getHRMDocuments, uploadHRMDocument, deleteHRMDocument } from '@/app/actions/hrm-documents';
+import { getHRMDocuments, uploadHRMDocument, deleteHRMDocument, getVaultUsers } from '@/app/actions/hrm-documents';
 import { uploadFile } from '@/app/actions/upload';
 import { toast } from 'sonner';
+
+interface UserItem {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+}
 
 interface DocItem {
     _id: string;
@@ -41,22 +50,31 @@ export function DocumentVault() {
 
     const [filter, setFilter] = useState<string>('All');
     const [docs, setDocs] = useState<DocItem[]>([]);
+    const [users, setUsers] = useState<UserItem[]>([]);
+    const [selectedUserId, setSelectedUserId] = useState<string>('ALL');
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [uploadCategory, setUploadCategory] = useState('Contract');
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
     const [pendingFile, setPendingFile] = useState<File | null>(null);
+    const [previewFile, setPreviewFile] = useState<DocItem | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
 
-    // Load docs whenever refreshKey changes
     const loadDocs = useCallback(async () => {
+        if (!session?.user?.id) return;
         setLoading(true);
         try {
-            const res = await getHRMDocuments();
+            const [res, usersData] = await Promise.all([
+                getHRMDocuments(),
+                isAdminOrHR ? getVaultUsers() : Promise.resolve(null)
+            ]);
             if (res.success && res.data) {
                 setDocs(res.data);
             } else {
                 setDocs([]);
+            }
+            if (isAdminOrHR && usersData?.success && usersData.data) {
+                setUsers(usersData.data);
             }
         } catch (e) {
             console.error('Failed to load docs', e);
@@ -64,7 +82,7 @@ export function DocumentVault() {
         } finally {
             setLoading(false);
         }
-    }, [refreshKey]);
+    }, [refreshKey, isAdminOrHR, session?.user?.id]);
 
     useEffect(() => {
         loadDocs();
@@ -166,7 +184,14 @@ export function DocumentVault() {
     };
 
     const filteredDocs =
-        filter === 'All' ? docs : docs.filter(d => (d.type || d.category) === filter);
+        (filter === 'All' ? docs : docs.filter(d => (d.type || d.category) === filter))
+        .filter(d => {
+            if (!isAdminOrHR) {
+                return d.uploadedBy === session?.user?.id;
+            }
+            if (selectedUserId === 'ALL') return true;
+            return d.uploadedBy === selectedUserId;
+        });
 
     return (
         <div className="space-y-6">
@@ -245,9 +270,8 @@ export function DocumentVault() {
                         </button>
                     ))}
 
-                    {/* Upload — admin / HR only */}
-                    {isAdminOrHR && (
-                        <div className="flex items-center gap-2 ml-2">
+                    {/* Upload */}
+                    <div className="flex items-center gap-2 ml-2">
                             <label
                                 className={cn(
                                     'flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg shadow-lg cursor-pointer transition-colors',
@@ -266,18 +290,50 @@ export function DocumentVault() {
                                     className="hidden"
                                     onChange={handleFileSelect}
                                     disabled={uploading}
-                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                                 />
                             </label>
                             <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">Max 10 MB</span>
                         </div>
-                    )}
                 </div>
             </div>
 
-            {/* ─── Document Grid ─── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <AnimatePresence mode="popLayout">
+            {/* ─── Document Grid and Sidebar ─── */}
+            <div className={isAdminOrHR ? "grid grid-cols-1 md:grid-cols-4 gap-6" : ""}>
+                {isAdminOrHR && (
+                    <div className="md:col-span-1 space-y-2">
+                        <div className="p-4 bg-white border border-gray-100 rounded-xl shadow-sm">
+                            <h4 className="text-sm font-bold text-gray-900 mb-3">Employees</h4>
+                            <div className="space-y-1 max-h-[500px] overflow-y-auto pr-1">
+                                <button
+                                    onClick={() => setSelectedUserId('ALL')}
+                                    className={cn(
+                                        "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors",
+                                        selectedUserId === 'ALL' ? "bg-emerald-50 text-emerald-700 font-bold" : "text-gray-600 hover:bg-gray-50 font-medium"
+                                    )}
+                                >
+                                    All Employees
+                                </button>
+                                {users.map((u: any) => (
+                                    <button
+                                        key={u._id}
+                                        onClick={() => setSelectedUserId(u._id)}
+                                        className={cn(
+                                            "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors truncate",
+                                            selectedUserId === u._id ? "bg-emerald-50 text-emerald-700 font-bold" : "text-gray-600 hover:bg-gray-50"
+                                        )}
+                                        title={u.name}
+                                    >
+                                        {u.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                <div className={isAdminOrHR ? "md:col-span-3" : "w-full"}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <AnimatePresence mode="popLayout">
                     {loading ? (
                         <div className="col-span-3 flex flex-col items-center justify-center py-16 gap-3">
                             <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
@@ -299,16 +355,16 @@ export function DocumentVault() {
                                 <motion.div
                                     layout
                                     className="group relative bg-white border border-gray-100 rounded-xl p-4 cursor-pointer hover:shadow-md transition-all hover:border-emerald-200"
-                                    onClick={() => window.open(doc.url, '_blank')}
+                                    onClick={() => setPreviewFile(doc)}
                                 >
                                     {/* Top row */}
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 font-bold text-[10px] group-hover:border-emerald-300 transition-colors uppercase">
+                                    <div className="flex items-start mb-3 relative">
+                                        <div className="flex items-center gap-3 w-full">
+                                            <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-200 flex flex-shrink-0 items-center justify-center text-gray-500 font-bold text-[10px] group-hover:border-emerald-300 transition-colors uppercase">
                                                 {doc.url.split('.').pop()?.substring(0, 4) || 'FILE'}
                                             </div>
-                                            <div className="min-w-0">
-                                                <h4 className="text-sm font-bold text-gray-900 truncate max-w-[160px]" title={doc.name}>
+                                            <div className="min-w-0 flex-1 pr-4">
+                                                <h4 className="text-sm font-bold text-gray-900 truncate" title={doc.name}>
                                                     {doc.name}
                                                 </h4>
                                                 <p className="text-xs text-gray-400 mt-0.5">
@@ -318,11 +374,11 @@ export function DocumentVault() {
                                         </div>
 
                                         {/* Action buttons — visible on hover */}
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 shrink-0">
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0 absolute -top-2 -right-2 bg-white/95 backdrop-blur-sm shadow-sm border border-gray-100 p-1 rounded-lg z-10">
                                             <button
                                                 aria-label="View document"
-                                                onClick={e => { e.stopPropagation(); window.open(doc.url, '_blank'); }}
-                                                className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                                                onClick={e => { e.stopPropagation(); setPreviewFile(doc); }}
+                                                className="p-1.5 rounded-md text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                                                 title="View"
                                             >
                                                 <Eye className="w-4 h-4" />
@@ -330,16 +386,16 @@ export function DocumentVault() {
                                             <button
                                                 aria-label="Download document"
                                                 onClick={e => handleDownload(doc, e)}
-                                                className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                                className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                                                 title="Download"
                                             >
                                                 <Download className="w-4 h-4" />
                                             </button>
-                                            {isAdminOrHR && (
+                                            {(isAdminOrHR || doc.uploadedBy === session?.user?.id) && (
                                                 <button
                                                     aria-label="Delete document"
                                                     onClick={e => handleDelete(doc._id, doc.name, e)}
-                                                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                    className="p-1.5 rounded-md text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors"
                                                     title="Delete"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
@@ -370,7 +426,28 @@ export function DocumentVault() {
                         ))
                     )}
                 </AnimatePresence>
+                    </div>
+                </div>
             </div>
+
+            <Dialog open={!!previewFile} onOpenChange={(o) => !o && setPreviewFile(null)}>
+                <DialogContent className="glass-card max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
+                    <div className="p-4 border-b flex justify-between items-center bg-background">
+                        <h3 className="font-bold truncate max-w-[60%]">{previewFile?.name}</h3>
+                        <div className="flex items-center gap-3">
+                            <a href={previewFile?.url} download className="text-primary hover:underline text-sm flex items-center gap-1"><Download className="w-4 h-4" /> Download</a>
+                            <button className="text-sm font-medium hover:text-gray-900 border p-1 border-gray-100 rounded-md px-3" onClick={() => setPreviewFile(null)}>Close</button>
+                        </div>
+                    </div>
+                    <div className="flex-1 bg-white p-4 overflow-hidden flex items-center justify-center">
+                        {previewFile?.url.includes('data:image/') ? (
+                            <img src={previewFile?.url} alt={previewFile?.name} className="max-w-full max-h-full object-contain shadow-lg" />
+                        ) : (
+                            <iframe src={previewFile?.url} className="w-full h-full rounded shadow-lg bg-gray-50 border-none" title={previewFile?.name} />
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
