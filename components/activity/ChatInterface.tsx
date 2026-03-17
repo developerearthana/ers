@@ -134,6 +134,8 @@ export default function ChatInterface() {
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!activeConversationId) return;
+
         const tempMsg: Message = {
             _id: `temp-${Date.now()}`,
             content: newMessage,

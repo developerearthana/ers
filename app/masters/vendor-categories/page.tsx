@@ -12,6 +12,14 @@ interface VendorCategory {
     metadata?: { description?: string };
 }
 
+const COMMON_CATEGORIES = [
+    'Manpower', 'Carpenter', 'Plumbing', 'Civil Works', 
+    'Electrical', 'Logistics', 'IT Services', 'Furniture', 
+    'Painting', 'Security', 'Housekeeping', 'HVAC', 
+    'Landscaping', 'Fabrication', 'Glass & Aluminum'
+];
+
+
 export default function VendorCategoriesMaster() {
     const [categories, setCategories] = useState<VendorCategory[]>([]);
     const [loading, setLoading] = useState(true);
@@ -23,6 +31,8 @@ export default function VendorCategoriesMaster() {
 
     const [newCategory, setNewCategory] = useState('');
     const [newDesc, setNewDesc] = useState('');
+    const [isManualMode, setIsManualMode] = useState(false);
+
 
     useEffect(() => { loadCategories(); }, []);
 
@@ -111,18 +121,53 @@ export default function VendorCategoriesMaster() {
                 {showAddForm && (
                     <div className="p-4 border-b border-border bg-muted/30 animate-in fade-in slide-in-from-top-2">
                         <form onSubmit={handleAdd} className="flex flex-col md:flex-row gap-3 items-end">
-                            <div className="flex-1 w-full">
+                            <div className="flex-1 w-full relative">
                                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Category Name *</label>
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    className="w-full border border-border rounded-lg p-2 text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
-                                    placeholder="e.g., Logistics Partner"
-                                    value={newCategory}
-                                    onChange={(e) => setNewCategory(e.target.value)}
-                                    required
-                                />
+                                {!isManualMode ? (
+                                    <select
+                                        className="w-full border border-border rounded-lg p-2 text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
+                                        value={newCategory}
+                                        onChange={(e) => {
+                                            if (e.target.value === 'CUSTOM') {
+                                                setIsManualMode(true);
+                                                setNewCategory('');
+                                            } else {
+                                                setNewCategory(e.target.value);
+                                            }
+                                        }}
+                                        required
+                                    >
+                                        <option value="">Select a Category</option>
+                                        {COMMON_CATEGORIES.map(cat => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                        <option value="CUSTOM" className="font-bold text-primary">+ Other (Manual Entry)</option>
+                                    </select>
+                                ) : (
+                                    <div className="relative">
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            className="w-full border border-border rounded-lg p-2 pr-10 text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
+                                            placeholder="Enter category name"
+                                            value={newCategory}
+                                            onChange={(e) => setNewCategory(e.target.value)}
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsManualMode(false);
+                                                setNewCategory('');
+                                            }}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary hover:underline font-semibold"
+                                        >
+                                            Back
+                                        </button>
+                                    </div>
+                                )}
                             </div>
+
                             <div className="flex-1 w-full">
                                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Description</label>
                                 <input
@@ -133,6 +178,7 @@ export default function VendorCategoriesMaster() {
                                     onChange={(e) => setNewDesc(e.target.value)}
                                 />
                             </div>
+
                             <div className="flex gap-2 shrink-0">
                                 <button
                                     type="button"
@@ -175,10 +221,12 @@ export default function VendorCategoriesMaster() {
                                             {editingId === cat._id ? (
                                                 <input
                                                     className="border border-border rounded-lg px-2 py-1 text-sm bg-background text-foreground w-full focus:ring-2 focus:ring-primary/20 outline-none"
+                                                    list="common-categories"
                                                     value={editName}
                                                     onChange={e => setEditName(e.target.value)}
                                                 />
                                             ) : (
+
                                                 <span className="flex items-center gap-2">
                                                     <Tag className="w-4 h-4 text-primary/50 group-hover:text-primary transition-colors" />
                                                     {cat.label}

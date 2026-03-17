@@ -18,8 +18,10 @@ interface LeaveRequest {
     endDate: string;
     reason: string;
     status: 'Pending' | 'Approved' | 'Rejected';
-    days?: number; // Calculated on frontend or backend
+    days?: number; // Calculated on frontend
     approverId?: string;
+    approverName?: string;
+    approverRole?: string;
 }
 
 import { useSession } from 'next-auth/react';
@@ -286,11 +288,11 @@ export default function LeaveManagementPage() {
                                             </span>
                                         )
                                     ) : req.status === 'Approved' ? (
-                                        <span className="px-3 py-1.5 rounded-full text-xs font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1.5">
+                                        <span className="px-3 py-1.5 rounded-full text-xs font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1.5 shadow-sm">
                                             <Check className="w-3.5 h-3.5" /> Approved
                                         </span>
                                     ) : (
-                                        <span className="px-3 py-1.5 rounded-full text-xs font-bold border bg-red-50 text-red-700 border-red-200 flex items-center gap-1.5">
+                                        <span className="px-3 py-1.5 rounded-full text-xs font-bold border bg-red-50 text-red-700 border-red-200 flex items-center gap-1.5 shadow-sm">
                                             <X className="w-3.5 h-3.5" /> Declined
                                         </span>
                                     )}

@@ -77,10 +77,14 @@ export async function seedMasters() {
         { type: "ContactType", label: "Consultant", value: "Consultant", order: 5, color: "bg-gray-50 text-gray-700 border-gray-100" },
 
         // Vendor Categories
-        { type: "VendorCategory", label: "Material Supplier", value: "Material Supplier", order: 1 },
-        { type: "VendorCategory", label: "Service Provider", value: "Service Provider", order: 2 },
-        { type: "VendorCategory", label: "Contractor", value: "Contractor", order: 3 },
-        { type: "VendorCategory", label: "Consultant", value: "Consultant", order: 4 },
+        { type: "VendorCategory", label: "Manpower", value: "Manpower", order: 1 },
+        { type: "VendorCategory", label: "Carpenter", value: "Carpenter", order: 2 },
+        { type: "VendorCategory", label: "Plumbing", value: "Plumbing", order: 3 },
+        { type: "VendorCategory", label: "Civil Works", value: "Civil Works", order: 4 },
+        { type: "VendorCategory", label: "Electrical", value: "Electrical", order: 5 },
+        { type: "VendorCategory", label: "Service Provider", value: "Service Provider", order: 6 },
+        { type: "VendorCategory", label: "Material Supplier", value: "Material Supplier", order: 7 },
+
 
         // Lead Status
         { type: "LeadStatus", label: "New", value: "New", order: 1, color: "bg-blue-50 text-blue-700 border-blue-100", isDefault: true },

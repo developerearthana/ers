@@ -92,10 +92,12 @@ export class HRMService {
         return JSON.parse(JSON.stringify(leave));
     }
 
-    async updateLeaveStatus(id: string, status: string, approverId?: string) {
+    async updateLeaveStatus(id: string, status: string, approverId?: string, approverName?: string, approverRole?: string) {
         await connectToDatabase();
         const update: any = { status };
         if (approverId) update.approverId = approverId;
+        if (approverName) update.approverName = approverName;
+        if (approverRole) update.approverRole = approverRole;
 
         const leave = await LeaveRequest.findByIdAndUpdate(id, update, { new: true });
         return JSON.parse(JSON.stringify(leave));

@@ -210,7 +210,12 @@ export const requestLeave = createJSONAction(LeaveRequestSchema, async (data) =>
 
 export const approveLeave = async (id: string, status: 'Approved' | 'Rejected') => {
     try {
-        await hrmService.updateLeaveStatus(id, status);
+        const session = await auth();
+        if (!session?.user?.id) throw new Error("Unauthorized");
+
+        const approverName = session.user.name || "Administrator";
+        const approverRole = session.user.role || "Admin";
+        await hrmService.updateLeaveStatus(id, status, session.user.id, approverName, approverRole);
         revalidatePath("/hrm/leave");
         return { success: true };
     } catch (error: any) {

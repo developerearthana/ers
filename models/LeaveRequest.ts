@@ -9,6 +9,8 @@ export interface ILeaveRequest extends Document {
     reason: string;
     status: 'Pending' | 'Approved' | 'Rejected';
     approverId?: mongoose.Types.ObjectId;
+    approverName?: string;
+    approverRole?: string;
     createdAt: Date;
 }
 
@@ -28,7 +30,9 @@ const LeaveRequestSchema: Schema = new Schema({
         enum: ['Pending', 'Approved', 'Rejected'],
         default: 'Pending'
     },
-    approverId: { type: Schema.Types.ObjectId, ref: 'User' }
+    approverId: { type: Schema.Types.ObjectId, ref: 'User' },
+    approverName: { type: String },
+    approverRole: { type: String }
 }, { timestamps: true });
 
 export default mongoose.models.LeaveRequest || mongoose.model<ILeaveRequest>('LeaveRequest', LeaveRequestSchema);
