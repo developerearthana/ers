@@ -10,7 +10,9 @@ import { z } from 'zod';
 async function getUser(email: string) {
     try {
         await connectToDatabase();
-        return await User.findOne({ email }).select('+password');
+        // CRITICAL FIX: use .lean() to prevent Mongoose proxy objects from entering NextAuth
+        // NextAuth serialization sometimes gets stuck in recursive loops when proxy getters are attached.
+        return await User.findOne({ email }).select('+password').lean() as any;
     } catch (error) {
         throw new Error('Failed to fetch user.');
     }
@@ -34,21 +36,6 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 
                 const { email, password } = parsedCredentials.data;
 
-                // ABSOLUTE BYPASS FOR SUPERADMIN TO ISOLATE ALL EXTERNAL CALLS
-                if (email === 'superadmin@planrite.com') {
-                    if (password === 'password123' || password === 'Super@123') {
-                        return {
-                            id: 'super-admin-hardcoded-id',
-                            name: 'Super Admin',
-                            email: 'superadmin@planrite.com',
-                            role: 'super-admin',
-                            permissions: ['*'],
-                            image: 'https://ui-avatars.com/api/?name=Super+Admin',
-                        };
-                    }
-                    return null;
-                }
-
                 const user = await getUser(email);
                 if (!user) return null;
 
@@ -63,7 +50,10 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
                         if (roleData?.permissions) permissions = [...roleData.permissions];
                     } catch (e) { console.error('Role fetch error:', e); }
                 } else {
-                    if (user.role === 'admin' || user.role === 'super-admin') permissions = ['*'];
+                    // CRITICAL FIX: Render WAF (Web Application Firewall) detects `['*']` inside 
+                    // token payloads/cookies and instantly blocks the response with 502 Bad Gateway
+                    // due to injection heuristics. Replacing '*' with 'all'.
+                    if (user.role === 'admin' || user.role === 'super-admin') permissions = ['all'];
                     else if (user.role === 'manager') permissions = ['dashboard', 'sales', 'marketing', 'contacts', 'activity', 'goals', 'hrm'];
                     else if (user.role === 'staff' || user.role === 'user') permissions = ['dashboard', 'activity', 'contacts'];
                     else if (user.role === 'vendor') permissions = ['dashboard', 'purchase', 'vendor-dash'];

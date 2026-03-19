@@ -27,7 +27,7 @@ export function PermissionGuard({
     if (!currentPermissions) return <>{fallback}</>;
 
     // Super Admin Bypass
-    if (currentPermissions.includes('*')) {
+    if (currentPermissions.includes('*') || currentPermissions.includes('all')) {
         return <>{children}</>;
     }
 

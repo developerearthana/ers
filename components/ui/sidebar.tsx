@@ -86,7 +86,7 @@ export function Sidebar({
         if (item.permission === 'basic-hrm') return true; // Always allow punch in and leave
 
         if (userRole === 'super-admin' || userRole === 'admin') return true;
-        if (userPermissions?.includes('*')) return true;
+        if (userPermissions?.includes('*') || userPermissions?.includes('all')) return true;
         if (userPermissions?.includes(item.permission)) return true;
         return false;
     });

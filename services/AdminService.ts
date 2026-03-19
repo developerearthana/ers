@@ -125,7 +125,7 @@ export class AdminService {
 
             SOD_RULES.forEach(rule => {
                 const hasAllPermissions = rule.conflictingPermissions.every(p =>
-                    role.permissions.includes(p) || role.permissions.includes('*')
+                    role.permissions.includes(p) || role.permissions.includes('*') || role.permissions.includes('all')
                 );
 
                 if (hasAllPermissions) {

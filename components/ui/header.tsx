@@ -118,7 +118,7 @@ export function Header({ user }: { user?: any }) {
                                 <nav className="grid gap-1 px-2">
                                     {navItems.filter(item => {
                                         if (userRole === 'super-admin') return true;
-                                        if (userPermissions?.includes('*')) return true;
+                                        if (userPermissions?.includes('*') || userPermissions?.includes('all')) return true;
                                         if (userPermissions?.includes(item.permission)) return true;
                                         return false;
                                     }).map((item, index) => {
