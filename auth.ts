@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { authConfig } from './auth.config';
 import connectToDatabase from './lib/db';
 import User from './models/User';
+import Role from './models/Role'; // Statically import Role
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
@@ -43,10 +44,10 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
                 let permissions: string[] = [];
                 if (user.customRole) {
                     try {
-                        const Role = (await import('./models/Role')).default;
+                        // Avoid dynamic import() here as it can hang Next.js production builds in auth callbacks
                         const roleData = await Role.findById(user.customRole);
                         if (roleData?.permissions) permissions = [...roleData.permissions];
-                    } catch (e) { /* ignore */ }
+                    } catch (e) { console.error('Role fetch error:', e); }
                 } else {
                     if (user.role === 'admin' || user.role === 'super-admin') permissions = ['*'];
                     else if (user.role === 'manager') permissions = ['dashboard', 'sales', 'marketing', 'contacts', 'activity', 'goals', 'hrm'];
