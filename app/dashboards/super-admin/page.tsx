@@ -26,21 +26,24 @@ export default function SuperAdminDashboard() {
     useEffect(() => {
         const loadDashboardData = async () => {
             try {
-                const [liveRes, leavesRes] = await Promise.all([
-                    getLiveUsers(),
-                    getLeaves()
-                ]);
+                // Load sequentially to avoid overwhelming the server on cold start
+                // Each wrapped independently so one failure doesn't crash the whole dashboard
+                try {
+                    const liveRes = await getLiveUsers();
+                    if (liveRes.success && liveRes.data) setLiveUsers(liveRes.data);
+                } catch (e) { console.warn('Live users load failed', e); }
 
-                if (liveRes.success && liveRes.data) {
-                    setLiveUsers(liveRes.data);
-                }
+                try {
+                    const leavesRes = await getLeaves();
+                    if (leavesRes.success && leavesRes.data) {
+                        setLeaveRequests(leavesRes.data.filter((r: any) => r.status === 'Pending'));
+                    }
+                } catch (e) { console.warn('Leaves load failed', e); }
 
-                if (leavesRes.success && leavesRes.data) {
-                    setLeaveRequests(leavesRes.data.filter((r: any) => r.status === 'Pending'));
-                }
+                try {
+                    await loadKPIs();
+                } catch (e) { console.warn('KPIs load failed', e); }
 
-                // Load KPIs using the stabilized callback
-                await loadKPIs();
             } catch (error) {
                 console.error("Failed to load dashboard data", error);
             } finally {
