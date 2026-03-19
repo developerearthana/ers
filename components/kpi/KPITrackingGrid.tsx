@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -199,6 +199,7 @@ export function KPITrackingGrid({ data, onRefresh }: KPITrackingGridProps) {
                 <SheetContent className="sm:max-w-md">
                     <SheetHeader>
                         <SheetTitle>Log Contribution</SheetTitle>
+                        <SheetDescription>Record your progress update for this KPI assignment.</SheetDescription>
                     </SheetHeader>
                     {selectedKpi && (
                         <div className="mt-4 p-4 bg-primary/5 border border-primary/10 rounded-xl">

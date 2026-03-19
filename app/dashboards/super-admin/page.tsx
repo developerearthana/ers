@@ -2,14 +2,15 @@
 
 import { Activity, Users, DollarSign, ArrowUpRight, ShieldCheck, Server, AlertTriangle, Download, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getLiveUsers, getLeaves, approveLeave } from "@/app/actions/hrm";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { KPITrackingGrid } from "@/components/kpi/KPITrackingGrid";
+import dynamic from 'next/dynamic';
 import { Target } from "lucide-react";
-import { useCallback } from "react";
 import { getAllKPIAssignments } from "@/app/actions/kpi-assignments";
+
+const KPITrackingGrid = dynamic(() => import('@/components/kpi/KPITrackingGrid').then(m => ({ default: m.KPITrackingGrid })), { ssr: false });
 
 export default function SuperAdminDashboard() {
     const [liveUsers, setLiveUsers] = useState<any[]>([]);
@@ -105,7 +106,7 @@ export default function SuperAdminDashboard() {
                         </div>
                         <p className={`text-xs flex items-center gap-1 font-medium ${(stat.change || '').includes('+') ? 'text-green-600' : (stat.change || '').includes('-') ? 'text-red-600' : stat.change === 'Stable' ? 'text-gray-500' : 'text-blue-600'}`}>
                             {stat.change && (stat.change.includes('+') || stat.change.includes('-')) && <ArrowUpRight className={`w-3 h-3 ${stat.change.includes('-') ? 'rotate-180' : ''}`} />}
-                            {stat.change === 'Stable' || !stat.change.includes('%') ? stat.change : `${stat.change} vs last month`}
+                            {!stat.change || stat.change === 'Stable' || !stat.change.includes('%') ? (stat.change || '') : `${stat.change} vs last month`}
                         </p>
                     </div>
                 ))}
