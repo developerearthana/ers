@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { Logo } from '@/components/ui/logo';
 import { useRouter } from 'next/navigation';
