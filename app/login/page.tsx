@@ -45,7 +45,10 @@ export default function LoginPage() {
                 const sessionRes = await fetch('/api/auth/session');
                 const session = await sessionRes.json();
                 const role = session?.user?.role || 'staff';
-                router.push(getRoleRedirect(role));
+                
+                // Force a hard reload to clear Next.js client-side router cache 
+                // and guarantee the dashboard components fetch their fresh server data
+                window.location.href = getRoleRedirect(role);
             }
         } catch (err) {
             setError('Something went wrong. Please try again.');
