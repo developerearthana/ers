@@ -335,12 +335,12 @@ export function DocumentVault() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <AnimatePresence mode="popLayout">
                     {loading ? (
-                        <div className="col-span-3 flex flex-col items-center justify-center py-16 gap-3">
+                        <div key="loading" className="col-span-3 flex flex-col items-center justify-center py-16 gap-3">
                             <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
                             <p className="text-sm text-gray-400">Loading documents…</p>
                         </div>
                     ) : filteredDocs.length === 0 ? (
-                        <div className="col-span-3 flex flex-col items-center justify-center py-16 gap-3 border-2 border-dashed border-gray-200 rounded-2xl">
+                        <div key="empty" className="col-span-3 flex flex-col items-center justify-center py-16 gap-3 border-2 border-dashed border-gray-200 rounded-2xl">
                             <Shield className="w-12 h-12 text-gray-200" />
                             <p className="font-semibold text-gray-500">No documents found</p>
                             <p className="text-sm text-gray-400">

@@ -175,7 +175,9 @@ export default function AttendancePage() {
                         <AnimatePresence>
                             {isPunchedIn && (
                                 <motion.div
+                                    key="punch-status"
                                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 10 }}
                                     className="bg-emerald-50/80 backdrop-blur-sm p-4 rounded-xl flex items-center gap-4 border border-emerald-100"
                                 >
                                     <div className="p-2 bg-emerald-100 rounded-full text-emerald-600">
