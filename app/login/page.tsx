@@ -1,25 +1,58 @@
 "use client"
 
-import { useActionState, useEffect } from 'react';
-import { authenticate } from '@/app/actions/auth-login';
+import { useState } from 'react';
+import { signIn } from 'next-auth/react';
 import { Logo } from '@/components/ui/logo';
 import { useRouter } from 'next/navigation';
 
+function getRoleRedirect(role: string): string {
+    if (role === 'vendor') return '/dashboards/vendor';
+    if (role === 'customer') return '/dashboards/customer';
+    if (role === 'manager') return '/dashboards/manager';
+    if (role === 'staff' || role === 'user' || role === 'employee') return '/dashboards/employee';
+    if (role === 'super-admin' || role === 'admin') return '/dashboards/super-admin';
+    return '/dashboards/employee';
+}
+
 export default function LoginPage() {
     const router = useRouter();
-    const [result, dispatch, isPending] = useActionState(authenticate, undefined);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [isPending, setIsPending] = useState(false);
 
-    // Handle redirect marker returned by authenticate
-    useEffect(() => {
-        if (result?.startsWith('REDIRECT:')) {
-            const url = result.replace('REDIRECT:', '');
-            router.push(url);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setIsPending(true);
+
+        try {
+            // Use next-auth/react signIn which goes through /api/auth/* routes
+            // This avoids the server action 502 issue on Render
+            const result = await signIn('credentials', {
+                email,
+                password,
+                redirect: false,
+            });
+
+            if (result?.error) {
+                setError('Invalid email or password.');
+                return;
+            }
+
+            if (result?.ok) {
+                // Fetch the session to get role for redirect
+                const sessionRes = await fetch('/api/auth/session');
+                const session = await sessionRes.json();
+                const role = session?.user?.role || 'staff';
+                router.push(getRoleRedirect(role));
+            }
+        } catch (err) {
+            setError('Something went wrong. Please try again.');
+        } finally {
+            setIsPending(false);
         }
-    }, [result, router]);
-
-    // If redirecting, show nothing (or a loading state)
-    const isRedirecting = result?.startsWith('REDIRECT:');
-    const errorMessage = isRedirecting ? undefined : result;
+    };
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -31,7 +64,7 @@ export default function LoginPage() {
                     <p className="mt-1 text-sm text-muted-foreground">Sign in to your organization's portal</p>
                 </div>
 
-                <form className="mt-8 space-y-5" action={dispatch}>
+                <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
                     <div className="space-y-4">
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
@@ -42,6 +75,8 @@ export default function LoginPage() {
                                 name="email"
                                 type="email"
                                 required
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
                                 autoComplete="email"
                                 className="block w-full rounded-lg border border-border px-3 py-2.5 bg-background text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm transition-all"
                                 placeholder="you@company.com"
@@ -56,6 +91,8 @@ export default function LoginPage() {
                                 name="password"
                                 type="password"
                                 required
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
                                 autoComplete="current-password"
                                 className="block w-full rounded-lg border border-border px-3 py-2.5 bg-background text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm transition-all"
                                 placeholder="••••••••"
@@ -63,9 +100,9 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {errorMessage && (
+                    {error && (
                         <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3" aria-live="polite">
-                            <p className="text-sm text-destructive">{errorMessage}</p>
+                            <p className="text-sm text-destructive">{error}</p>
                         </div>
                     )}
 
