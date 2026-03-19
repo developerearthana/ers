@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: '20mb',
+      allowedOrigins: ['earthana-ers.onrender.com', '*.onrender.com', 'localhost:3000']
     },
   },
   compress: true,
