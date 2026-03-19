@@ -21,6 +21,11 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [isPending, setIsPending] = useState(false);
 
+    // Warm up the server and database on mount to prevent Render 502 cold starts
+    useEffect(() => {
+        fetch('/api/health').catch(() => { /* ignore */ });
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');

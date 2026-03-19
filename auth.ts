@@ -9,11 +9,21 @@ import { z } from 'zod';
 
 async function getUser(email: string) {
     try {
+        console.log(`[AUTH] Fetching user: ${email}`);
         await connectToDatabase();
-        // CRITICAL FIX: use .lean() to prevent Mongoose proxy objects from entering NextAuth
-        // NextAuth serialization sometimes gets stuck in recursive loops when proxy getters are attached.
-        return await User.findOne({ email }).select('+password').lean() as any;
+        // Using JSON.parse(JSON.stringify()) to ensure ZERO Mongoose proxy getters 
+        // enter NextAuth's internal serialization engine.
+        const user = await User.findOne({ email }).select('+password').lean().exec();
+        
+        if (user) {
+            console.log(`[AUTH] User found for: ${email}`);
+            return JSON.parse(JSON.stringify(user));
+        }
+        
+        console.log(`[AUTH] User not found: ${email}`);
+        return null;
     } catch (error) {
+        console.error(`[AUTH] Database connection error during login for ${email}:`, error);
         throw new Error('Failed to fetch user.');
     }
 }
