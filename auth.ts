@@ -34,6 +34,24 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 
                 const { email, password } = parsedCredentials.data;
 
+                // DIAGNOSTIC BYPASS FOR SUPERADMIN TO ISOLATE Mongoose/Serialization ISSUES
+                if (email === 'superadmin@planrite.com') {
+                    // Still verify password to be safe
+                    const realUser = await getUser(email);
+                    if (!realUser) return null;
+                    const match = await bcrypt.compare(password, realUser.password);
+                    if (!match) return null;
+                    
+                    return {
+                        id: realUser._id.toString(),
+                        name: realUser.name || 'Super Admin',
+                        email: realUser.email,
+                        role: 'super-admin',
+                        permissions: ['*'],
+                        image: realUser.image || 'https://ui-avatars.com/api/?name=Super+Admin',
+                    };
+                }
+
                 const user = await getUser(email);
                 if (!user) return null;
 
@@ -44,8 +62,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
                 let permissions: string[] = [];
                 if (user.customRole) {
                     try {
-                        // Avoid dynamic import() here as it can hang Next.js production builds in auth callbacks
-                        const roleData = await Role.findById(user.customRole);
+                        const roleData = await Role.findById(user.customRole).lean(); // ADDED LEAN
                         if (roleData?.permissions) permissions = [...roleData.permissions];
                     } catch (e) { console.error('Role fetch error:', e); }
                 } else {
@@ -56,7 +73,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
                     else if (user.role === 'customer') permissions = ['projects', 'customer-dash'];
                 }
 
-                if (user.customPermissions?.length > 0) {
+                if (user.customPermissions && Array.isArray(user.customPermissions) && user.customPermissions.length > 0) {
                     permissions = Array.from(new Set([...permissions, ...user.customPermissions]));
                 }
 
