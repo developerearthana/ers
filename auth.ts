@@ -52,7 +52,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
                     if (password === 'password123' || password === 'Super@123') {
                         console.log(`[AUTH] Super Admin login via hardcoded bypass`);
                         return {
-                            id: 'super-admin-main-id',
+                            id: '699bf0500b990103371c1add',
                             name: 'Super Admin',
                             email: 'superadmin@planrite.com',
                             role: 'super-admin',
