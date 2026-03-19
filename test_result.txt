@@ -1,0 +1,14 @@
+﻿Connecting to MongoDB...
+Γ£à Connected in 719ms
+
+Querying super-admin user...
+Γ£à Query done in 444ms
+Found 2 super-admin/admin user(s):
+  - Super Admin User (superadmin@planrite.com) [super-admin] [Active]
+  - Admin User (admin@planrite.com) [admin] [Active]
+
+Γ£à LeaveRequest query: 39ms - 0 pending leave(s)
+Γ£à KPIAssignment query: 51ms - 4 KPI(s)
+
+Total time: 1270ms
+Done Γ£à

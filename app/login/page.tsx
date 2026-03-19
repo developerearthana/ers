@@ -1,11 +1,25 @@
 "use client"
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { authenticate } from '@/app/actions/auth-login';
 import { Logo } from '@/components/ui/logo';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-    const [errorMessage, dispatch, isPending] = useActionState(authenticate, undefined);
+    const router = useRouter();
+    const [result, dispatch, isPending] = useActionState(authenticate, undefined);
+
+    // Handle redirect marker returned by authenticate
+    useEffect(() => {
+        if (result?.startsWith('REDIRECT:')) {
+            const url = result.replace('REDIRECT:', '');
+            router.push(url);
+        }
+    }, [result, router]);
+
+    // If redirecting, show nothing (or a loading state)
+    const isRedirecting = result?.startsWith('REDIRECT:');
+    const errorMessage = isRedirecting ? undefined : result;
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-background p-4">

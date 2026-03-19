@@ -1,7 +1,6 @@
 'use server';
 
 import { signIn } from '@/auth';
-import { redirect } from 'next/navigation';
 import { AuthError } from 'next-auth';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
@@ -18,7 +17,7 @@ function getRoleRedirect(role: string): string {
 export async function authenticate(
     prevState: string | undefined,
     formData: FormData,
-) {
+): Promise<string> {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
@@ -26,8 +25,7 @@ export async function authenticate(
         return 'Please enter your email and password.';
     }
 
-    // 1. Look up the user role BEFORE signIn so we know where to redirect
-    //    This avoids calling auth() after signIn (double DB round-trip = 502 risk)
+    // 1. Get the user role before signIn to know where to redirect
     let redirectUrl = '/dashboards/employee';
     try {
         await connectToDatabase();
@@ -36,10 +34,10 @@ export async function authenticate(
             redirectUrl = getRoleRedirect(user.role);
         }
     } catch {
-        // If DB lookup fails, we'll fall back to employee dashboard after signIn
+        // fallback to employee dashboard
     }
 
-    // 2. Sign in
+    // 2. Sign in — this validates password via bcrypt
     try {
         await signIn('credentials', {
             email,
@@ -55,7 +53,7 @@ export async function authenticate(
                     return 'Something went wrong. Please try again.';
             }
         }
-        // Re-throw NEXT_REDIRECT (thrown by Next.js on successful redirect)
+        // If it's a NEXT_REDIRECT, re-throw so Next.js handles it
         const err = error as any;
         if (err?.digest?.includes('NEXT_REDIRECT') || err?.message?.includes('NEXT_REDIRECT')) {
             throw error;
@@ -63,6 +61,7 @@ export async function authenticate(
         return 'Something went wrong.';
     }
 
-    // 3. Redirect to the determined destination
-    redirect(redirectUrl);
+    // 3. Return a special marker so the client knows where to go
+    // This avoids calling redirect() server-side which causes 502 on Render
+    return `REDIRECT:${redirectUrl}`;
 }
