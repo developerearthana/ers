@@ -42,7 +42,7 @@ export default function AppShell({
                 }`}>
                 {!isAuthPage && <Header user={user} />}
                 {/* pt-16 on mobile to clear the hamburger button area */}
-                <main className={`flex-1 p-4 sm:p-6 md:p-8 pt-6 animate-in-fade-slide ${!isAuthPage ? "pt-16 md:pt-6" : ""}`}>
+                <main className={`flex-1 p-3 sm:p-4 md:p-6 lg:p-8 animate-in-fade-slide ${!isAuthPage ? "pt-20 sm:pt-16 md:pt-6" : ""}`}>
                     {children}
                 </main>
             </div>

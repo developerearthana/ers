@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from 'react';
-import { Plus, Trash2, ArrowLeft, Layers, Edit2, GripVertical, Save, X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Trash2, ArrowLeft, Layers, GripVertical, Save } from 'lucide-react';
 import Link from 'next/link';
 import { MOCK_PROJECT_TEMPLATES } from '@/lib/mock-data';
 
 export default function ProjectTemplatesMaster() {
     const [templates, setTemplates] = useState(MOCK_PROJECT_TEMPLATES);
     const [editingTemplate, setEditingTemplate] = useState<any>(null);
-
-    // Initial state for a new stage
     const [newStageName, setNewStageName] = useState("");
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+    const dragIndex = useRef<number | null>(null);
 
     const handleEdit = (template: any) => {
         setEditingTemplate({ ...template });
@@ -23,14 +23,9 @@ export default function ProjectTemplatesMaster() {
 
     const addStage = () => {
         if (!newStageName) return;
-        const newStage = {
-            id: `s-${Date.now()}`,
-            name: newStageName,
-            modules: []
-        };
         setEditingTemplate({
             ...editingTemplate,
-            stages: [...editingTemplate.stages, newStage]
+            stages: [...editingTemplate.stages, { id: `s-${Date.now()}`, name: newStageName, modules: [] }]
         });
         setNewStageName("");
     };
@@ -42,12 +37,33 @@ export default function ProjectTemplatesMaster() {
         });
     };
 
-    // Simple reorder: move up
-    const moveStageUp = (index: number) => {
-        if (index === 0) return;
-        const newStages = [...editingTemplate.stages];
-        [newStages[index - 1], newStages[index]] = [newStages[index], newStages[index - 1]];
-        setEditingTemplate({ ...editingTemplate, stages: newStages });
+    // ─── Drag and Drop handlers ───
+    const onDragStart = (index: number) => {
+        dragIndex.current = index;
+    };
+
+    const onDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        setDragOverIndex(index);
+    };
+
+    const onDrop = (e: React.DragEvent, dropIndex: number) => {
+        e.preventDefault();
+        if (dragIndex.current === null || dragIndex.current === dropIndex) {
+            setDragOverIndex(null);
+            return;
+        }
+        const stages = [...editingTemplate.stages];
+        const [moved] = stages.splice(dragIndex.current, 1);
+        stages.splice(dropIndex, 0, moved);
+        setEditingTemplate({ ...editingTemplate, stages });
+        dragIndex.current = null;
+        setDragOverIndex(null);
+    };
+
+    const onDragEnd = () => {
+        dragIndex.current = null;
+        setDragOverIndex(null);
     };
 
     return (
@@ -113,33 +129,44 @@ export default function ProjectTemplatesMaster() {
 
                             <div className="p-6 space-y-6">
                                 {/* Stages List */}
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {editingTemplate.stages.map((stage: any, index: number) => (
-                                        <div key={stage.id} className="group relative flex items-center gap-4 p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-200 transition-all">
-                                            <button
-                                                onClick={() => moveStageUp(index)}
-                                                className="text-gray-300 hover:text-gray-600 cursor-move"
-                                                disabled={index === 0}
-                                                aria-label="Move Stage Up"
-                                            >
+                                        <div
+                                            key={stage.id}
+                                            draggable
+                                            onDragStart={() => onDragStart(index)}
+                                            onDragOver={(e) => onDragOver(e, index)}
+                                            onDrop={(e) => onDrop(e, index)}
+                                            onDragEnd={onDragEnd}
+                                            className={`group relative flex items-center gap-4 p-3 bg-white border rounded-lg transition-all select-none
+                                                ${dragOverIndex === index
+                                                    ? 'border-blue-400 bg-blue-50 shadow-md scale-[1.01]'
+                                                    : 'border-gray-200 hover:border-blue-200'
+                                                }
+                                                ${dragIndex.current === index ? 'opacity-40' : 'opacity-100'}
+                                            `}
+                                        >
+                                            <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 touch-none">
                                                 <GripVertical className="w-5 h-5" />
-                                            </button>
-                                            <div className="w-8 h-8 rounded-full bg-white text-blue-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                                            </div>
+                                            <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
                                                 {index + 1}
                                             </div>
-                                            <div className="flex-1">
+                                            <div className="flex-1 min-w-0">
                                                 <h4 className="font-semibold text-gray-900">{stage.name}</h4>
-                                                <div className="flex flex-wrap gap-2 mt-1">
-                                                    {stage.modules.map((mod: string) => (
-                                                        <span key={mod} className="text-[10px] bg-white text-gray-600 px-2 py-0.5 rounded border border-gray-200">
-                                                            {mod}
-                                                        </span>
-                                                    ))}
-                                                </div>
+                                                {stage.modules.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1.5 mt-1">
+                                                        {stage.modules.map((mod: string) => (
+                                                            <span key={mod} className="text-[10px] bg-gray-50 text-gray-500 px-2 py-0.5 rounded border border-gray-200">
+                                                                {mod}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                             <button
                                                 onClick={() => removeStage(stage.id)}
-                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                                                 aria-label={`Remove ${stage.name}`}
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -160,7 +187,7 @@ export default function ProjectTemplatesMaster() {
                                     />
                                     <button
                                         onClick={addStage}
-                                        className="px-4 py-2 bg-white text-white rounded-lg text-sm font-medium hover:bg-white flex items-center gap-2"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
                                     >
                                         <Plus className="w-4 h-4" />
                                         Add Stage

@@ -29,6 +29,7 @@ const UserSchema: Schema = new Schema(
         email: { type: String, required: true, unique: true },
         password: { type: String, select: false },
         phone: { type: String },
+        personalEmail: { type: String },
         image: { type: String },
         role: { type: String, enum: ['user', 'admin', 'vendor', 'customer', 'super-admin', 'manager', 'staff'], default: 'user' }, // Flexible role for UI
         dept: { type: String, default: 'General' },
@@ -49,7 +50,8 @@ const UserSchema: Schema = new Schema(
                 tax: { type: Number, default: 0 },
                 other: { type: Number, default: 0 }
             }
-        }
+        },
+        viewPreferences: { type: Map, of: String, default: {} }
     },
     { timestamps: true }
 );

@@ -8,7 +8,7 @@ import { Users, Briefcase, ShoppingBag, UserPlus } from 'lucide-react';
 const contactsLinks = [
     { name: 'All Contacts', href: '/contacts', icon: Users },
     { name: 'Clients', href: '/contacts/clients', icon: Briefcase },
-    { name: 'Vendors', href: '/contacts/vendors', icon: ShoppingBag },
+    { name: 'Vendors', href: '/masters/vendors', icon: ShoppingBag },
     { name: 'Leads', href: '/contacts/leads', icon: UserPlus },
     { name: 'Consultants', href: '/contacts/consultants', icon: Briefcase },
 ];
@@ -25,7 +25,7 @@ export default function ContactsLayout({
             <div className="flex items-center gap-6 border-b pb-4 overflow-x-auto">
                 {contactsLinks.map((link) => {
                     const Icon = link.icon;
-                    const isActive = pathname === link.href;
+                    const isActive = pathname === link.href || pathname?.startsWith(link.href + '/');
                     return (
                         <Link
                             key={link.name}

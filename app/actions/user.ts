@@ -56,7 +56,7 @@ export async function getDashboardUsers() {
 export async function getAllUsers() {
     await connectToDatabase();
     const users = await User.find({})
-        .select('name role dept image jobTitle email status phone')
+        .select('name role dept image jobTitle email personalEmail status phone')
         .sort({ name: 1 })
         .lean();
     return JSON.parse(JSON.stringify(users));
@@ -70,6 +70,7 @@ const UserSchema = z.object({
     id: z.string().optional(),
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email address"),
+    personalEmail: z.string().email("Invalid personal email").optional().or(z.literal('')),
     role: z.string().min(1, "Role is required"),
     dept: z.string().optional(),
     phone: z.string().optional(),
@@ -92,6 +93,7 @@ export const createUser = createJSONAction(UserSchema, async (data) => {
     const newUser = await User.create({
         name: data.name,
         email: data.email,
+        personalEmail: data.personalEmail || undefined,
         password: hashedPassword,
         role: data.role,
         dept: data.dept || 'General',
@@ -112,6 +114,7 @@ export const updateUser = createJSONAction(UserSchema, async (data) => {
     const updateData: any = {
         name: data.name,
         email: data.email,
+        personalEmail: data.personalEmail || undefined,
         role: data.role,
         dept: data.dept,
         phone: data.phone,

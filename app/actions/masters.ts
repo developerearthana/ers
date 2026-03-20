@@ -23,6 +23,7 @@ export async function createMaster(data: Partial<IMaster>) {
         const master = await Master.create(data);
         revalidatePath("/masters/kpi-metrics");
         revalidatePath("/masters/vendor-categories");
+        revalidatePath("/masters/vendors");
         return { success: true, data: JSON.parse(JSON.stringify(master)) };
     } catch (error: any) {
         return { success: false, error: error.message };
@@ -38,6 +39,7 @@ export async function updateMaster(id: string, data: Partial<IMaster>) {
         const master = await Master.findByIdAndUpdate(id, data, { new: true });
         revalidatePath("/masters/kpi-metrics");
         revalidatePath("/masters/vendor-categories");
+        revalidatePath("/masters/vendors");
         return { success: true, data: JSON.parse(JSON.stringify(master)) };
     } catch (error: any) {
         return { success: false, error: error.message };
@@ -53,6 +55,7 @@ export async function deleteMaster(id: string) {
         await Master.findByIdAndDelete(id);
         revalidatePath("/masters/kpi-metrics");
         revalidatePath("/masters/vendor-categories");
+        revalidatePath("/masters/vendors");
         return { success: true };
     } catch (error: any) {
         return { success: false, error: error.message };

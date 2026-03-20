@@ -27,7 +27,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Logo } from "@/components/ui/logo"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 
 const textStyle = "text-sm font-medium tracking-wide";
 
@@ -69,6 +69,25 @@ export function Sidebar({
     const pathname = usePathname()
     const [mobileOpen, setMobileOpen] = useState(false)
 
+    // Scroll position preservation — one ref per scroll container (desktop + mobile)
+    const desktopScrollRef = useRef<HTMLDivElement>(null)
+    const mobileScrollRef = useRef<HTMLDivElement>(null)
+    const desktopScrollPos = useRef(0)
+    const mobileScrollPos = useRef(0)
+
+    const saveDesktopScroll = useCallback(() => {
+        if (desktopScrollRef.current) desktopScrollPos.current = desktopScrollRef.current.scrollTop
+    }, [])
+    const saveMobileScroll = useCallback(() => {
+        if (mobileScrollRef.current) mobileScrollPos.current = mobileScrollRef.current.scrollTop
+    }, [])
+
+    // Restore scroll position after pathname change (re-render)
+    useEffect(() => {
+        if (desktopScrollRef.current) desktopScrollRef.current.scrollTop = desktopScrollPos.current
+        if (mobileScrollRef.current) mobileScrollRef.current.scrollTop = mobileScrollPos.current
+    }, [pathname])
+
     // Close mobile menu on route change
     useEffect(() => {
         setMobileOpen(false)
@@ -91,7 +110,7 @@ export function Sidebar({
         return false;
     });
 
-    const NavContent = ({ collapsed = false }: { collapsed?: boolean }) => (
+    const NavContent = ({ collapsed = false, scrollRef, onScroll }: { collapsed?: boolean, scrollRef?: React.RefObject<HTMLDivElement>, onScroll?: () => void }) => (
         <>
             {/* Brand Header */}
             <div className={cn(
@@ -122,16 +141,10 @@ export function Sidebar({
                     )}
                 </div>
 
-                <div className={cn(
-                    "transition-all duration-300 overflow-hidden whitespace-nowrap",
-                    collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-                )}>
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">{userRole || 'Guest'}</p>
-                </div>
             </div>
 
             {/* Navigation */}
-            <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar overflow-x-hidden">
+            <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar overflow-x-hidden">
                 <nav className="grid gap-1.5">
                     {filteredNavItems.map((item, index) => {
                         const isSuperAdmin = userRole === 'super-admin' || userRole === 'admin';
@@ -196,7 +209,7 @@ export function Sidebar({
             {/* ─── Mobile Hamburger Button ─── */}
             <button
                 onClick={() => setMobileOpen(true)}
-                className="fixed top-4 left-4 z-50 md:hidden p-2 bg-card border border-border rounded-xl shadow-lg text-foreground hover:bg-muted transition-colors"
+                className="fixed top-4 left-4 z-50 md:hidden p-2.5 bg-card border border-border rounded-xl shadow-lg text-foreground hover:bg-muted transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
                 aria-label="Open menu"
             >
                 <Menu className="w-5 h-5" />
@@ -213,7 +226,7 @@ export function Sidebar({
             {/* ─── Mobile Sidebar Drawer ─── */}
             <aside
                 className={cn(
-                    "fixed inset-y-0 left-0 z-50 w-72 md:hidden flex flex-col transform transition-transform duration-300 ease-in-out",
+                    "fixed inset-y-0 left-0 z-50 w-[85vw] sm:w-72 md:hidden flex flex-col transform transition-transform duration-300 ease-in-out",
                     mobileOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
@@ -226,7 +239,7 @@ export function Sidebar({
                     >
                         <X className="w-4 h-4" />
                     </button>
-                    <NavContent collapsed={false} />
+                    <NavContent collapsed={false} scrollRef={mobileScrollRef} onScroll={saveMobileScroll} />
                 </div>
             </aside>
 
@@ -247,7 +260,7 @@ export function Sidebar({
                         {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
                     </button>
 
-                    <NavContent collapsed={isCollapsed} />
+                    <NavContent collapsed={isCollapsed} scrollRef={desktopScrollRef} onScroll={saveDesktopScroll} />
                 </div>
             </aside>
         </>

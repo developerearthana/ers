@@ -13,6 +13,7 @@ import { getDepartments } from '@/app/actions/organization';
 import { getRoles } from '@/app/actions/role';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PasswordResetModal } from '@/components/admin/PasswordResetModal';
+import { useViewPreference } from '@/hooks/useViewPreference';
 
 interface Department {
     _id: string;
@@ -46,7 +47,7 @@ export default function UsersMaster() {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useViewPreference<'grid' | 'list'>('usersViewMode', 'grid');
     const [roleFilter, setRoleFilter] = useState('All Roles');
     const [statusFilter, setStatusFilter] = useState('All Status');
 
@@ -69,10 +70,6 @@ export default function UsersMaster() {
 
     useEffect(() => {
         loadData();
-        const savedView = localStorage.getItem('usersViewMode');
-        if (savedView === 'grid' || savedView === 'list') {
-            setViewMode(savedView);
-        }
     }, []);
 
     const loadData = async () => {
@@ -90,7 +87,6 @@ export default function UsersMaster() {
 
     const toggleViewMode = (mode: 'grid' | 'list') => {
         setViewMode(mode);
-        localStorage.setItem('usersViewMode', mode);
     };
 
     const handleOpenSheet = (user?: User) => {
@@ -233,7 +229,7 @@ export default function UsersMaster() {
                 </div>
                 <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-[140px] bg-background">
+                        <SelectTrigger className="w-full sm:w-[140px] bg-background">
                             <SelectValue placeholder="All Status" />
                         </SelectTrigger>
                         <SelectContent className="bg-white">
@@ -341,35 +337,35 @@ export default function UsersMaster() {
                                 <table className="w-full text-sm text-left">
                                     <thead className="text-xs text-gray-700 uppercase bg-background border-b">
                                         <tr>
-                                            <th className="px-6 py-3 font-medium">User</th>
-                                            <th className="px-6 py-3 font-medium">Role</th>
-                                            <th className="px-6 py-3 font-medium">Department</th>
-                                            <th className="px-6 py-3 font-medium text-center">Status</th>
-                                            <th className="px-6 py-3 font-medium text-right">Actions</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium">User</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium hidden sm:table-cell">Role</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium hidden md:table-cell">Department</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium text-center hidden sm:table-cell">Status</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {filteredUsers.map((user) => (
                                             <tr key={user._id || user.id} className="hover:bg-background/50">
-                                                <td className="px-6 py-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar className="w-8 h-8">
+                                                <td className="px-3 sm:px-6 py-3">
+                                                    <div className="flex items-center gap-2 sm:gap-3">
+                                                        <Avatar className="w-8 h-8 shrink-0">
                                                             <AvatarImage src={user.image} />
                                                             <AvatarFallback className="text-xs bg-white">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                                                         </Avatar>
-                                                        <div>
-                                                            <p className="font-medium text-gray-900">{user.name}</p>
-                                                            <p className="text-xs text-gray-500">{user.email}</p>
+                                                        <div className="min-w-0">
+                                                            <p className="font-medium text-gray-900 truncate text-sm">{user.name}</p>
+                                                            <p className="text-xs text-gray-500 truncate hidden sm:block">{user.email}</p>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-3 capitalize">
+                                                <td className="px-3 sm:px-6 py-3 capitalize hidden sm:table-cell">
                                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-gray-800">
                                                         {getRoleLabel(user)}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-3">{user.dept}</td>
-                                                <td className="px-6 py-3 text-center">
+                                                <td className="px-3 sm:px-6 py-3 hidden md:table-cell text-sm">{user.dept}</td>
+                                                <td className="px-3 sm:px-6 py-3 text-center hidden sm:table-cell">
                                                     <button
                                                         onClick={() => handleStatusToggle(user)}
                                                         role="switch"
@@ -379,8 +375,8 @@ export default function UsersMaster() {
                                                         <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${user.status === 'Active' ? 'translate-x-4' : 'translate-x-0'}`} />
                                                     </button>
                                                 </td>
-                                                <td className="px-6 py-3 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
+                                                <td className="px-3 sm:px-6 py-3 text-right">
+                                                    <div className="flex items-center justify-end gap-1 sm:gap-2">
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:bg-background rounded-full" onClick={() => handlePasswordReset(user)} title="Reset Password">
                                                             <KeyRound className="w-4 h-4" />
                                                         </Button>
@@ -443,7 +439,7 @@ export default function UsersMaster() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>User Type / Role</Label>
                                     <Select

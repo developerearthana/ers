@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from '@/components/ui/toaster';
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment, getSubsidiaries } from '@/app/actions/organization';
 import { getAllUsers } from '@/app/actions/user';
+import { useViewPreference } from '@/hooks/useViewPreference';
 
 interface Department {
     _id?: string;
@@ -36,7 +37,7 @@ export default function DepartmentsMaster() {
     const [currentDept, setCurrentDept] = useState<Department | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedSubFilter, setSelectedSubFilter] = useState<string>('All Subsidiaries');
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useViewPreference<'grid' | 'list'>('departmentsViewMode', 'grid');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -49,15 +50,10 @@ export default function DepartmentsMaster() {
 
     useEffect(() => {
         loadData();
-        const savedView = localStorage.getItem('departmentsViewMode');
-        if (savedView === 'grid' || savedView === 'list') {
-            setViewMode(savedView);
-        }
     }, []);
 
     const toggleViewMode = (mode: 'grid' | 'list') => {
         setViewMode(mode);
-        localStorage.setItem('departmentsViewMode', mode);
     };
 
     const loadData = async () => {
@@ -162,7 +158,7 @@ export default function DepartmentsMaster() {
                 <div className="flex items-center gap-2 w-full md:w-auto">
                     <Filter className="w-5 h-5 text-gray-400" />
                     <Select value={selectedSubFilter} onValueChange={setSelectedSubFilter}>
-                        <SelectTrigger className="w-[200px] bg-background border-gray-200">
+                        <SelectTrigger className="w-full sm:w-[200px] bg-background border-gray-200">
                             <SelectValue placeholder="All Entities" />
                         </SelectTrigger>
                         <SelectContent className="bg-white">
@@ -260,28 +256,28 @@ export default function DepartmentsMaster() {
                                 <table className="w-full text-sm text-left">
                                     <thead className="text-xs text-gray-700 uppercase bg-background border-b">
                                         <tr>
-                                            <th className="px-6 py-3 font-medium">Code</th>
-                                            <th className="px-6 py-3 font-medium">Department Name</th>
-                                            <th className="px-6 py-3 font-medium">Entity</th>
-                                            <th className="px-6 py-3 font-medium">Head of Dept.</th>
-                                            <th className="px-6 py-3 font-medium text-center">Staff Count</th>
-                                            <th className="px-6 py-3 font-medium text-right">Actions</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium">Code</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium">Department Name</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium hidden sm:table-cell">Entity</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium hidden md:table-cell">Head of Dept.</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium text-center hidden sm:table-cell">Staff</th>
+                                            <th className="px-3 sm:px-6 py-3 font-medium text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {filteredDepartments.map((dept) => (
                                             <tr key={dept._id || dept.id} className="hover:bg-background/50">
-                                                <td className="px-6 py-3 font-mono text-gray-600">{dept.code}</td>
-                                                <td className="px-6 py-3 font-medium text-gray-900">{dept.name}</td>
-                                                <td className="px-6 py-3 text-gray-600">{typeof dept.subsidiaryId === 'object' ? dept.subsidiaryId.name : 'Unknown'}</td>
-                                                <td className="px-6 py-3 text-gray-600">{dept.headOfDepartment || '-'}</td>
-                                                <td className="px-6 py-3 text-center">
+                                                <td className="px-3 sm:px-6 py-3 font-mono text-gray-600 text-xs sm:text-sm">{dept.code}</td>
+                                                <td className="px-3 sm:px-6 py-3 font-medium text-gray-900 text-xs sm:text-sm">{dept.name}</td>
+                                                <td className="px-3 sm:px-6 py-3 text-gray-600 hidden sm:table-cell text-xs sm:text-sm">{typeof dept.subsidiaryId === 'object' ? dept.subsidiaryId.name : 'Unknown'}</td>
+                                                <td className="px-3 sm:px-6 py-3 text-gray-600 hidden md:table-cell text-xs sm:text-sm">{dept.headOfDepartment || '-'}</td>
+                                                <td className="px-3 sm:px-6 py-3 text-center hidden sm:table-cell">
                                                     <span className="font-bold bg-primary/10 text-primary px-2 py-1 rounded-full text-xs">
                                                         {dept.employees ? dept.employees.length : 0}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-3 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
+                                                <td className="px-3 sm:px-6 py-3 text-right">
+                                                    <div className="flex items-center justify-end gap-1 sm:gap-2">
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600 hover:bg-amber-50 rounded-full" onClick={() => handleOpenSheet(dept)}>
                                                             <Edit className="w-4 h-4" />
                                                         </Button>
@@ -302,7 +298,7 @@ export default function DepartmentsMaster() {
 
             {/* Create/Edit Sheet */}
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+                <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
                     <SheetHeader>
                         <SheetTitle>{currentDept ? 'Edit Department' : 'Add Department'}</SheetTitle>
                     </SheetHeader>

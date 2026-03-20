@@ -75,6 +75,18 @@ export const getSubsidiaries = async () => {
     await getCompany(); // Ensure company exists
     const mainCompany = await Company.findOne();
 
+    // Ensure "Earthana" (parent entity) always exists as a subsidiary
+    const earthanaExists = await Subsidiary.findOne({ companyId: mainCompany._id, name: "Earthana" });
+    if (!earthanaExists) {
+        await Subsidiary.create({
+            companyId: mainCompany._id,
+            name: "Earthana",
+            location: "Corporate",
+            address: mainCompany.address,
+            description: "Parent Company Entity"
+        });
+    }
+
     const subsidiaries = await Subsidiary.find({ companyId: mainCompany._id });
     return JSON.parse(JSON.stringify(subsidiaries));
 };

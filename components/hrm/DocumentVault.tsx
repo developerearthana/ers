@@ -2,23 +2,23 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, Upload, Shield, CheckCircle, Trash2, Loader2, Download, FileText, File } from 'lucide-react';
+import {
+    Eye, Upload, Shield, CheckCircle, Trash2, Loader2, Download,
+    XCircle, Clock, Check, X
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CardWrapper } from '@/components/ui/page-wrapper';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { format } from 'date-fns';
-import { ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
-import { getHRMDocuments, uploadHRMDocument, deleteHRMDocument, getVaultUsers } from '@/app/actions/hrm-documents';
+import {
+    getHRMDocuments, uploadHRMDocument, deleteHRMDocument,
+    getVaultUsers, approveHRMDocument, rejectHRMDocument
+} from '@/app/actions/hrm-documents';
 import { uploadFile } from '@/app/actions/upload';
 import { toast } from 'sonner';
 
-interface UserItem {
-    _id: string;
-    name: string;
-    email: string;
-    role: string;
-}
+interface UserItem { _id: string; name: string; email: string; role: string; }
 
 interface DocItem {
     _id: string;
@@ -29,9 +29,13 @@ interface DocItem {
     size: number;
     url: string;
     uploadedBy?: string;
+    uploadedByName?: string;
+    status: 'pending' | 'approved' | 'rejected';
+    rejectionReason?: string;
 }
 
 const CATEGORIES = ['All', 'Identity', 'Contract', 'Certification', 'Other'];
+const STATUS_FILTERS = ['All', 'Pending', 'Approved', 'Rejected'];
 
 const CATEGORY_COLORS: Record<string, string> = {
     Identity: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -40,25 +44,40 @@ const CATEGORY_COLORS: Record<string, string> = {
     Other: 'bg-gray-50 text-gray-700 border-gray-200',
 };
 
+const STATUS_BADGE: Record<string, string> = {
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    rejected: 'bg-red-50 text-red-700 border-red-200',
+};
+
+const STATUS_ICON: Record<string, React.ReactNode> = {
+    pending: <Clock className="w-3 h-3" />,
+    approved: <CheckCircle className="w-3 h-3" />,
+    rejected: <XCircle className="w-3 h-3" />,
+};
+
 export function DocumentVault() {
     const { data: session } = useSession();
     const userRole = session?.user?.role?.toLowerCase() || '';
-    const isAdminOrHR =
-        userRole.includes('admin') ||
-        userRole.includes('manager') ||
-        userRole.includes('hr');
+    const isAdminOrHR = userRole.includes('admin') || userRole.includes('hr') || userRole.includes('manager');
 
-    const [filter, setFilter] = useState<string>('All');
+    const [categoryFilter, setCategoryFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('All');
     const [docs, setDocs] = useState<DocItem[]>([]);
     const [users, setUsers] = useState<UserItem[]>([]);
-    const [selectedUserId, setSelectedUserId] = useState<string>('ALL');
+    const [selectedUserId, setSelectedUserId] = useState('ALL');
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [uploadCategory, setUploadCategory] = useState('Contract');
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
     const [pendingFile, setPendingFile] = useState<File | null>(null);
     const [previewFile, setPreviewFile] = useState<DocItem | null>(null);
+    const [rejectingId, setRejectingId] = useState<string | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [actioningId, setActioningId] = useState<string | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
+
+    const triggerRefresh = () => setRefreshKey(k => k + 1);
 
     const loadDocs = useCallback(async () => {
         if (!session?.user?.id) return;
@@ -68,261 +87,233 @@ export function DocumentVault() {
                 getHRMDocuments(),
                 isAdminOrHR ? getVaultUsers() : Promise.resolve(null)
             ]);
-            if (res.success && res.data) {
-                setDocs(res.data);
-            } else {
-                setDocs([]);
-            }
-            if (isAdminOrHR && usersData?.success && usersData.data) {
-                setUsers(usersData.data);
-            }
-        } catch (e) {
-            console.error('Failed to load docs', e);
+            setDocs(res.success && res.data ? res.data : []);
+            if (isAdminOrHR && usersData?.success && usersData.data) setUsers(usersData.data);
+        } catch {
             setDocs([]);
         } finally {
             setLoading(false);
         }
     }, [refreshKey, isAdminOrHR, session?.user?.id]);
 
-    useEffect(() => {
-        loadDocs();
-    }, [loadDocs]);
+    useEffect(() => { loadDocs(); }, [loadDocs]);
 
-    const triggerRefresh = () => setRefreshKey(k => k + 1);
-
-    const MAX_FILE_SIZE_MB = 10;
-    const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-
-    // Step 1: user picks a file → validate size → show category picker
+    // ── Upload flow ──────────────────────────────────────────
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
-        // Enforce 10 MB limit
-        if (file.size > MAX_FILE_SIZE_BYTES) {
-            toast.error(
-                `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Maximum allowed size is ${MAX_FILE_SIZE_MB} MB.`
-            );
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error(`File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Max 10 MB.`);
             e.target.value = '';
             return;
         }
-
         setPendingFile(file);
         setShowCategoryPicker(true);
-        // Reset input so the same file can be re-selected later
         e.target.value = '';
     };
 
-    // Step 2: user confirms category → actually upload
     const handleUploadConfirm = async () => {
         if (!pendingFile) return;
         setShowCategoryPicker(false);
         setUploading(true);
-
         try {
-            // 1. Send file to server to write to disk
             const formData = new FormData();
             formData.append('file', pendingFile);
             const uploadRes = await uploadFile(formData);
+            if (!uploadRes.url || uploadRes.error) { toast.error(uploadRes.error || 'Upload failed'); return; }
 
-            if (!uploadRes.url || uploadRes.error) {
-                toast.error(uploadRes.error || 'File upload failed');
-                return;
-            }
-
-            // 2. Save metadata in MongoDB
             const res = await uploadHRMDocument({
-                name: pendingFile.name,
-                url: uploadRes.url,
-                type: uploadCategory,
-                size: pendingFile.size,
-                category: uploadCategory,
+                name: pendingFile.name, url: uploadRes.url,
+                type: uploadCategory, size: pendingFile.size, category: uploadCategory,
             });
-
             if (res.success) {
-                toast.success(`"${pendingFile.name}" uploaded ✅`);
-                // Force a fresh fetch from DB
+                toast.success(`"${pendingFile.name}" uploaded — awaiting admin approval`);
                 triggerRefresh();
             } else {
-                toast.error(res.error || 'Could not save document metadata');
+                toast.error(res.error || 'Could not save document');
             }
-        } catch (err) {
-            console.error(err);
-            toast.error('Upload failed unexpectedly');
-        } finally {
-            setUploading(false);
-            setPendingFile(null);
-        }
+        } catch { toast.error('Upload failed'); }
+        finally { setUploading(false); setPendingFile(null); }
+    };
+
+    // ── Admin actions ────────────────────────────────────────
+    const handleApprove = async (id: string) => {
+        setActioningId(id);
+        const res = await approveHRMDocument(id);
+        if (res.success) { toast.success('Document approved'); triggerRefresh(); }
+        else toast.error(res.error || 'Failed to approve');
+        setActioningId(null);
+    };
+
+    const handleRejectSubmit = async () => {
+        if (!rejectingId) return;
+        setActioningId(rejectingId);
+        const res = await rejectHRMDocument(rejectingId, rejectReason);
+        if (res.success) { toast.success('Document rejected'); triggerRefresh(); }
+        else toast.error(res.error || 'Failed to reject');
+        setRejectingId(null);
+        setRejectReason('');
+        setActioningId(null);
     };
 
     const handleDelete = async (id: string, name: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-        try {
-            const res = await deleteHRMDocument(id);
-            if (res.success) {
-                toast.success('Document deleted');
-                triggerRefresh();
-            } else {
-                toast.error(res.error || 'Deletion failed');
-            }
-        } catch {
-            toast.error('An error occurred');
-        }
+        const res = await deleteHRMDocument(id);
+        if (res.success) { toast.success('Document deleted'); triggerRefresh(); }
+        else toast.error(res.error || 'Deletion failed');
     };
 
     const handleDownload = (doc: DocItem, e: React.MouseEvent) => {
         e.stopPropagation();
         const link = document.createElement('a');
-        link.href = doc.url;
-        link.download = doc.name;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        link.href = doc.url; link.download = doc.name; link.target = '_blank';
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
         toast.success(`Downloading: ${doc.name}`);
     };
 
-    const filteredDocs =
-        (filter === 'All' ? docs : docs.filter(d => (d.type || d.category) === filter))
-        .filter(d => {
-            if (!isAdminOrHR) {
-                return d.uploadedBy === session?.user?.id;
-            }
-            if (selectedUserId === 'ALL') return true;
-            return d.uploadedBy === selectedUserId;
-        });
+    // ── Filtering ────────────────────────────────────────────
+    const filteredDocs = docs.filter(d => {
+        const matchCat = categoryFilter === 'All' || (d.type || d.category) === categoryFilter;
+        const matchStatus = statusFilter === 'All' || (d.status ?? 'approved') === statusFilter.toLowerCase();
+        const matchUser = isAdminOrHR
+            ? (selectedUserId === 'ALL' || d.uploadedBy === selectedUserId)
+            : d.uploadedBy === session?.user?.id;
+        return matchCat && matchStatus && matchUser;
+    });
+
+    const pendingCount = docs.filter(d => (d.status ?? 'approved') === 'pending').length;
 
     return (
         <div className="space-y-6">
-            {/* ─── Category Picker Modal ─── */}
+
+            {/* ── Category Picker Modal ── */}
             {showCategoryPicker && pendingFile && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
                         <h3 className="text-lg font-bold text-gray-900 mb-1">Select Document Category</h3>
-                        <p className="text-sm text-gray-500 mb-4">
-                            File: <span className="font-medium text-gray-700">{pendingFile.name}</span>
-                        </p>
+                        <p className="text-sm text-gray-500 mb-4">File: <span className="font-medium text-gray-700">{pendingFile.name}</span></p>
                         <div className="grid grid-cols-2 gap-2 mb-5">
                             {CATEGORIES.filter(c => c !== 'All').map(cat => (
-                                <button
-                                    key={cat}
-                                    onClick={() => setUploadCategory(cat)}
-                                    className={cn(
-                                        'px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all',
-                                        uploadCategory === cat
-                                            ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                                            : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                                    )}
-                                >
+                                <button key={cat} onClick={() => setUploadCategory(cat)}
+                                    className={cn('px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all',
+                                        uploadCategory === cat ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600 hover:border-gray-300')}>
                                     {cat}
                                 </button>
                             ))}
                         </div>
                         <div className="flex gap-3">
-                            <button
-                                onClick={() => { setShowCategoryPicker(false); setPendingFile(null); }}
-                                className="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleUploadConfirm}
-                                className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
-                            >
-                                Upload Document
+                            <button onClick={() => { setShowCategoryPicker(false); setPendingFile(null); }}
+                                className="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+                            <button onClick={handleUploadConfirm}
+                                className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700">Upload Document</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Reject Reason Modal ── */}
+            {rejectingId && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">Reject Document</h3>
+                        <p className="text-sm text-gray-500 mb-4">Optionally provide a reason for rejection.</p>
+                        <textarea
+                            className="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-200"
+                            rows={3} placeholder="Reason (optional)"
+                            value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+                        />
+                        <div className="flex gap-3 mt-4">
+                            <button onClick={() => { setRejectingId(null); setRejectReason(''); }}
+                                className="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+                            <button onClick={handleRejectSubmit} disabled={!!actioningId}
+                                className="flex-1 py-2 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 disabled:opacity-50">
+                                {actioningId ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Confirm Reject'}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* ─── Header / Filter / Upload ─── */}
+            {/* ── Header ── */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
                         <Shield className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900">Secure Document Vault</h3>
+                        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            Secure Document Vault
+                            {isAdminOrHR && pendingCount > 0 && (
+                                <span className="text-xs bg-amber-500 text-white rounded-full px-2 py-0.5 font-bold animate-pulse">
+                                    {pendingCount} pending
+                                </span>
+                            )}
+                        </h3>
                         <p className="text-sm text-gray-500">
-                            {isAdminOrHR
-                                ? 'Upload and manage all employee documents'
-                                : 'View and download your documents'}
+                            {isAdminOrHR ? 'Review and manage all employee documents' : 'Upload documents for admin approval'}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                    {/* Category filter tabs */}
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                    {/* Category filter */}
                     {CATEGORIES.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setFilter(cat)}
-                            className={cn(
-                                'px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
-                                filter === cat
-                                    ? 'bg-emerald-600 text-white shadow-md'
-                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                            )}
-                        >
+                        <button key={cat} onClick={() => setCategoryFilter(cat)}
+                            className={cn('px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold rounded-lg transition-all',
+                                categoryFilter === cat ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50')}>
                             {cat}
                         </button>
                     ))}
 
-                    {/* Upload */}
-                    <div className="flex items-center gap-2 ml-2">
-                            <label
-                                className={cn(
-                                    'flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg shadow-lg cursor-pointer transition-colors',
-                                    uploading
-                                        ? 'bg-emerald-400 text-white cursor-wait'
-                                        : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200'
-                                )}
-                            >
-                                {uploading ? (
-                                    <><Loader2 className="w-3 h-3 animate-spin" /> Uploading…</>
-                                ) : (
-                                    <><Upload className="w-3 h-3" /> Upload Document</>
-                                )}
-                                <input
-                                    type="file"
-                                    className="hidden"
-                                    onChange={handleFileSelect}
-                                    disabled={uploading}
-                                />
-                            </label>
-                            <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">Max 10 MB</span>
-                        </div>
+                    {/* Upload button — available to everyone */}
+                    <label className={cn('flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg shadow-lg cursor-pointer transition-colors ml-2',
+                        uploading ? 'bg-emerald-400 text-white cursor-wait' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200')}>
+                        {uploading ? <><Loader2 className="w-3 h-3 animate-spin" /> Uploading…</> : <><Upload className="w-3 h-3" /> Upload Document</>}
+                        <input type="file" className="hidden" onChange={handleFileSelect} disabled={uploading} />
+                    </label>
+                    <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">Max 10 MB</span>
                 </div>
             </div>
 
-            {/* ─── Document Grid and Sidebar ─── */}
+            {/* ── Status filter (admin only) ── */}
+            {isAdminOrHR && (
+                <div className="flex items-center gap-2">
+                    {STATUS_FILTERS.map(s => (
+                        <button key={s} onClick={() => setStatusFilter(s)}
+                            className={cn('px-3 py-1 text-xs font-semibold rounded-full border transition-all',
+                                statusFilter === s
+                                    ? s === 'Pending' ? 'bg-amber-500 text-white border-amber-500'
+                                        : s === 'Approved' ? 'bg-emerald-600 text-white border-emerald-600'
+                                            : s === 'Rejected' ? 'bg-red-500 text-white border-red-500'
+                                                : 'bg-gray-800 text-white border-gray-800'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50')}>
+                            {s}
+                            {s === 'Pending' && pendingCount > 0 && <span className="ml-1">({pendingCount})</span>}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* ── Layout ── */}
             <div className={isAdminOrHR ? "grid grid-cols-1 md:grid-cols-4 gap-6" : ""}>
+
+                {/* Employee sidebar (admin only) */}
                 {isAdminOrHR && (
-                    <div className="md:col-span-1 space-y-2">
+                    <div className="md:col-span-1">
                         <div className="p-4 bg-white border border-gray-100 rounded-xl shadow-sm">
                             <h4 className="text-sm font-bold text-gray-900 mb-3">Employees</h4>
-                            <div className="space-y-1 max-h-[500px] overflow-y-auto pr-1">
-                                <button
-                                    onClick={() => setSelectedUserId('ALL')}
-                                    className={cn(
-                                        "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors",
-                                        selectedUserId === 'ALL' ? "bg-emerald-50 text-emerald-700 font-bold" : "text-gray-600 hover:bg-gray-50 font-medium"
-                                    )}
-                                >
+                            <div className="space-y-1 max-h-[200px] sm:max-h-[500px] overflow-y-auto pr-1">
+                                <button onClick={() => setSelectedUserId('ALL')}
+                                    className={cn('w-full text-left px-3 py-2 text-sm rounded-lg transition-colors',
+                                        selectedUserId === 'ALL' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-gray-600 hover:bg-gray-50 font-medium')}>
                                     All Employees
                                 </button>
-                                {users.map((u: any) => (
-                                    <button
-                                        key={u._id}
-                                        onClick={() => setSelectedUserId(u._id)}
-                                        className={cn(
-                                            "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors truncate",
-                                            selectedUserId === u._id ? "bg-emerald-50 text-emerald-700 font-bold" : "text-gray-600 hover:bg-gray-50"
-                                        )}
-                                        title={u.name}
-                                    >
+                                {users.map(u => (
+                                    <button key={u._id} onClick={() => setSelectedUserId(u._id)}
+                                        className={cn('w-full text-left px-3 py-2 text-sm rounded-lg transition-colors truncate',
+                                            selectedUserId === u._id ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-gray-600 hover:bg-gray-50')}
+                                        title={u.name}>
                                         {u.name}
                                     </button>
                                 ))}
@@ -330,112 +321,142 @@ export function DocumentVault() {
                         </div>
                     </div>
                 )}
-                
+
+                {/* Document grid */}
                 <div className={isAdminOrHR ? "md:col-span-3" : "w-full"}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <AnimatePresence mode="popLayout">
-                    {loading ? (
-                        <div key="loading" className="col-span-3 flex flex-col items-center justify-center py-16 gap-3">
-                            <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-                            <p className="text-sm text-gray-400">Loading documents…</p>
-                        </div>
-                    ) : filteredDocs.length === 0 ? (
-                        <div key="empty" className="col-span-3 flex flex-col items-center justify-center py-16 gap-3 border-2 border-dashed border-gray-200 rounded-2xl">
-                            <Shield className="w-12 h-12 text-gray-200" />
-                            <p className="font-semibold text-gray-500">No documents found</p>
-                            <p className="text-sm text-gray-400">
-                                {isAdminOrHR
-                                    ? 'Upload the first document using the button above.'
-                                    : 'No documents have been shared with you yet.'}
-                            </p>
-                        </div>
-                    ) : (
-                        filteredDocs.map((doc, i) => (
-                            <CardWrapper key={doc._id} delay={i * 0.04}>
-                                <motion.div
-                                    layout
-                                    className="group relative bg-white border border-gray-100 rounded-xl p-4 cursor-pointer hover:shadow-md transition-all hover:border-emerald-200"
-                                    onClick={() => setPreviewFile(doc)}
-                                >
-                                    {/* Top row */}
-                                    <div className="flex items-start mb-3 relative">
-                                        <div className="flex items-center gap-3 w-full">
-                                            <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-200 flex flex-shrink-0 items-center justify-center text-gray-500 font-bold text-[10px] group-hover:border-emerald-300 transition-colors uppercase">
-                                                {doc.url.split('.').pop()?.substring(0, 4) || 'FILE'}
+                            {loading ? (
+                                <div key="loading" className="col-span-3 flex flex-col items-center justify-center py-16 gap-3">
+                                    <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                                    <p className="text-sm text-gray-400">Loading documents…</p>
+                                </div>
+                            ) : filteredDocs.length === 0 ? (
+                                <div key="empty" className="col-span-3 flex flex-col items-center justify-center py-16 gap-3 border-2 border-dashed border-gray-200 rounded-2xl">
+                                    <Shield className="w-12 h-12 text-gray-200" />
+                                    <p className="font-semibold text-gray-500">No documents found</p>
+                                    <p className="text-sm text-gray-400">
+                                        {isAdminOrHR ? 'No documents match the current filters.' : 'Upload a document — it will be reviewed by admin.'}
+                                    </p>
+                                </div>
+                            ) : filteredDocs.map((doc, i) => {
+                                const canView = isAdminOrHR || (doc.status ?? 'approved') === 'approved';
+                                const isActioning = actioningId === doc._id;
+
+                                return (
+                                    <CardWrapper key={doc._id} delay={i * 0.04}>
+                                        <motion.div layout
+                                            className={cn('group relative bg-white border rounded-xl p-4 transition-all hover:shadow-md',
+                                                (doc.status ?? 'approved') === 'pending' ? 'border-amber-200 bg-amber-50/30' :
+                                                    (doc.status ?? 'approved') === 'rejected' ? 'border-red-200 bg-red-50/20' :
+                                                        'border-gray-100 cursor-pointer hover:border-emerald-200')}
+                                            onClick={() => canView && setPreviewFile(doc)}>
+
+                                            {/* File icon + name */}
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-200 flex shrink-0 items-center justify-center text-gray-500 font-bold text-[10px] uppercase">
+                                                    {doc.url.split('.').pop()?.substring(0, 4) || 'FILE'}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-bold text-gray-900 truncate" title={doc.name}>{doc.name}</h4>
+                                                    <p className="text-xs text-gray-400">{(doc.size / 1024).toFixed(0)} KB</p>
+                                                    {isAdminOrHR && doc.uploadedByName && (
+                                                        <p className="text-xs text-gray-500 font-medium mt-0.5">by {doc.uploadedByName}</p>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="min-w-0 flex-1 pr-4">
-                                                <h4 className="text-sm font-bold text-gray-900 truncate" title={doc.name}>
-                                                    {doc.name}
-                                                </h4>
-                                                <p className="text-xs text-gray-400 mt-0.5">
-                                                    {(doc.size / 1024).toFixed(0)} KB
+
+                                            {/* Category + Status badges */}
+                                            <div className="flex items-center gap-2 flex-wrap mb-3">
+                                                <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border',
+                                                    CATEGORY_COLORS[doc.type] || CATEGORY_COLORS.Other)}>
+                                                    {doc.type || 'Document'}
+                                                </span>
+                                                <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border',
+                                                    STATUS_BADGE[doc.status ?? 'approved'] ?? STATUS_BADGE.approved)}>
+                                                    {STATUS_ICON[doc.status ?? 'approved']}
+                                                    {(doc.status ?? 'approved').charAt(0).toUpperCase() + (doc.status ?? 'approved').slice(1)}
+                                                </span>
+                                            </div>
+
+                                            {/* Rejection reason */}
+                                            {(doc.status ?? 'approved') === 'rejected' && doc.rejectionReason && (
+                                                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-2 py-1 mb-3">
+                                                    Reason: {doc.rejectionReason}
                                                 </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Action buttons — visible on hover */}
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0 absolute -top-2 -right-2 bg-white/95 backdrop-blur-sm shadow-sm border border-gray-100 p-1 rounded-lg z-10">
-                                            <button
-                                                aria-label="View document"
-                                                onClick={e => { e.stopPropagation(); setPreviewFile(doc); }}
-                                                className="p-1.5 rounded-md text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                                                title="View"
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                aria-label="Download document"
-                                                onClick={e => handleDownload(doc, e)}
-                                                className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                                                title="Download"
-                                            >
-                                                <Download className="w-4 h-4" />
-                                            </button>
-                                            {(isAdminOrHR || doc.uploadedBy === session?.user?.id) && (
-                                                <button
-                                                    aria-label="Delete document"
-                                                    onClick={e => handleDelete(doc._id, doc.name, e)}
-                                                    className="p-1.5 rounded-md text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
                                             )}
-                                        </div>
-                                    </div>
 
-                                    {/* Category badge */}
-                                    <span className={cn(
-                                        'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border',
-                                        CATEGORY_COLORS[doc.type] || CATEGORY_COLORS.Other
-                                    )}>
-                                        {doc.type || 'Document'}
-                                    </span>
+                                            {/* Date */}
+                                            <p className="text-xs text-gray-400 mb-3">
+                                                {format(new Date(doc.createdAt), 'dd MMM yyyy')}
+                                            </p>
 
-                                    {/* Footer */}
-                                    <div className="flex items-center justify-between text-xs pt-3 mt-3 border-t border-gray-100">
-                                        <span className="text-gray-400">
-                                            {format(new Date(doc.createdAt), 'dd MMM yyyy')}
-                                        </span>
-                                        <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
-                                            <CheckCircle className="w-3 h-3" /> Verified
-                                        </span>
-                                    </div>
-                                </motion.div>
-                            </CardWrapper>
-                        ))
-                    )}
-                </AnimatePresence>
+                                            {/* Actions */}
+                                            <div className="flex items-center gap-1.5 border-t border-gray-100 pt-3">
+                                                {/* View + Download — only if approved (or admin) */}
+                                                {canView && (
+                                                    <>
+                                                        <button onClick={e => { e.stopPropagation(); setPreviewFile(doc); }}
+                                                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                                                            title="View">
+                                                            <Eye className="w-3.5 h-3.5" /> View
+                                                        </button>
+                                                        <button onClick={e => handleDownload(doc, e)}
+                                                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                                            title="Download">
+                                                            <Download className="w-3.5 h-3.5" /> Download
+                                                        </button>
+                                                    </>
+                                                )}
+
+                                                {/* Approve / Reject — admin only, pending docs */}
+                                                {isAdminOrHR && (doc.status ?? 'approved') === 'pending' && (
+                                                    <>
+                                                        <button
+                                                            onClick={e => { e.stopPropagation(); handleApprove(doc._id); }}
+                                                            disabled={isActioning}
+                                                            className="flex items-center gap-1 px-2 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-50 ml-auto"
+                                                            title="Approve">
+                                                            {isActioning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Approve
+                                                        </button>
+                                                        <button
+                                                            onClick={e => { e.stopPropagation(); setRejectingId(doc._id); }}
+                                                            className="flex items-center gap-1 px-2 py-1 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+                                                            title="Reject">
+                                                            <X className="w-3.5 h-3.5" /> Reject
+                                                        </button>
+                                                    </>
+                                                )}
+
+                                                {/* Delete — admin only */}
+                                                {isAdminOrHR && (
+                                                    <button
+                                                        onClick={e => handleDelete(doc._id, doc.name, e)}
+                                                        className={cn('flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors',
+                                                            !canView && !isAdminOrHR ? '' : 'ml-auto')}
+                                                        title="Delete">
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    </CardWrapper>
+                                );
+                            })}
+                        </AnimatePresence>
                     </div>
                 </div>
             </div>
 
-            <Dialog open={!!previewFile} onOpenChange={(o) => !o && setPreviewFile(null)}>
-                <DialogContent className="glass-card max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
+            {/* Preview Dialog */}
+            <Dialog open={!!previewFile} onOpenChange={o => !o && setPreviewFile(null)}>
+                <DialogContent className="glass-card w-[95vw] max-w-4xl h-[85vh] sm:h-[80vh] flex flex-col p-0 overflow-hidden">
                     <div className="p-4 border-b flex justify-between items-center bg-background">
                         <h3 className="font-bold truncate max-w-[60%]">{previewFile?.name}</h3>
                         <div className="flex items-center gap-3">
-                            <a href={previewFile?.url} download className="text-primary hover:underline text-sm flex items-center gap-1"><Download className="w-4 h-4" /> Download</a>
+                            <a href={previewFile?.url} download className="text-primary hover:underline text-sm flex items-center gap-1">
+                                <Download className="w-4 h-4" /> Download
+                            </a>
                             <button className="text-sm font-medium hover:text-gray-900 border p-1 border-gray-100 rounded-md px-3" onClick={() => setPreviewFile(null)}>Close</button>
                         </div>
                     </div>

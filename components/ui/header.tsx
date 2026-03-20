@@ -89,10 +89,8 @@ export function Header({ user }: { user?: any }) {
     };
 
     const handleLogout = async () => {
-        await signOut({ redirect: false });
         setIsProfileOpen(false);
-        router.replace("/login");
-        router.refresh();
+        await signOut({ callbackUrl: "/login" });
     };
 
     return (
@@ -183,7 +181,7 @@ export function Header({ user }: { user?: any }) {
                         placeholder="Search... (Ctrl+K)"
                         readOnly
                         onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-                        className="h-10 w-64 rounded-xl border-none bg-secondary/10 px-10 py-2 text-sm text-foreground shadow-inner transition-all focus:bg-white focus:ring-2 focus:ring-primary/20 focus:w-80 outline-none placeholder:text-muted-foreground/70 cursor-pointer"
+                        className="h-10 w-48 lg:w-64 rounded-xl border-none bg-secondary/10 px-10 py-2 text-sm text-foreground shadow-inner transition-all focus:bg-white focus:ring-2 focus:ring-primary/20 focus:w-64 lg:focus:w-80 outline-none placeholder:text-muted-foreground/70 cursor-pointer"
                     />
                 </div>
 
@@ -222,7 +220,7 @@ export function Header({ user }: { user?: any }) {
                     {/* Dropdown Menu */}
                     {isProfileOpen && (
                         <div
-                            className="absolute right-0 top-full pt-2 w-56 z-50 animate-in fade-in slide-in-from-top-2"
+                            className="absolute right-0 top-full pt-2 w-56 max-w-[calc(100vw-16px)] z-50 animate-in fade-in slide-in-from-top-2"
                             onMouseEnter={() => setIsProfileOpen(true)}
                         >
                             <div className="bg-popover rounded-xl shadow-xl border border-border overflow-hidden p-1">

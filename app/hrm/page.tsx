@@ -66,7 +66,7 @@ export default function HRMDashboard() {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                     { label: "Total Employees", value: stats.totalEmployees, desc: "Active Staff", icon: Users, color: "bg-muted", textColor: "text-primary", border: "border-border", data: stats.lists.employees },
                     { label: "Absentees", value: stats.lists.absentees.length || 0, desc: "Not Punched In", icon: CalendarDays, color: "bg-muted", textColor: "text-secondary-foreground", border: "border-border", data: stats.lists.absentees },
@@ -92,7 +92,7 @@ export default function HRMDashboard() {
             </div>
 
             <Sheet open={!!activeList} onOpenChange={(open) => !open && setActiveList(null)}>
-                <SheetContent className="w-[400px] sm:w-[540px]">
+                <SheetContent className="w-full sm:w-[400px] md:w-[540px]">
                     <SheetHeader>
                         <SheetTitle>{activeList?.title}</SheetTitle>
                         <SheetDescription>
@@ -133,7 +133,7 @@ export default function HRMDashboard() {
                 {/* Recruitment Pipeline Placeholder */}
                 <CardWrapper delay={0.5} className="lg:col-span-2 glass-card p-6 rounded-xl border border-border">
                     <h3 className="text-lg font-bold text-foreground mb-6">Recruitment Pipeline</h3>
-                    <div className="grid grid-cols-4 gap-4 text-center">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-center">
                         <div className="p-4 rounded-lg bg-card border border-border hover:bg-primary/5 transition-colors cursor-pointer group">
                             <div className="text-2xl font-bold text-primary mb-1 group-hover:scale-110 transition-transform">12</div>
                             <div className="text-xs font-semibold text-muted-foreground uppercase">Applied</div>

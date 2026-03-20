@@ -16,7 +16,7 @@ export default function MastersLayout({
         { name: 'User Types', href: '/masters/usertypes', icon: Users },
         { name: 'Users', href: '/masters/users', icon: Users },
         { name: 'Teams', href: '/masters/teams', icon: Network },
-        { name: 'Vendors', href: '/masters/vendor-categories', icon: Tag },
+        { name: 'Vendors', href: '/masters/vendors', icon: Tag },
         { name: 'Templates', href: '/masters/project-templates', icon: Layers },
     ];
 
@@ -29,7 +29,7 @@ export default function MastersLayout({
                 <div className="flex flex-wrap items-center gap-2 w-full">
                     {navItems.map((item) => {
                         const Icon = item.icon;
-                        const isActive = pathname === item.href;
+                        const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
                         return (
                             <Link
                                 key={item.href}

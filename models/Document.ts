@@ -2,11 +2,14 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IDocument extends Document {
     name: string;
-    folderId?: string; // Root if null
-    url: string; // Path or URL
-    type: string; // MIME type
-    size: number; // Bytes
+    folderId?: string;
+    url: string;
+    type: string;
+    size: number;
     uploadedBy: string;
+    uploadedByName?: string;
+    status: 'pending' | 'approved' | 'rejected';
+    rejectionReason?: string;
 }
 
 const DocumentSchema: Schema = new Schema(
@@ -17,6 +20,9 @@ const DocumentSchema: Schema = new Schema(
         type: { type: String },
         size: { type: Number },
         uploadedBy: { type: String, required: true },
+        uploadedByName: { type: String },
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        rejectionReason: { type: String },
     },
     { timestamps: true }
 );

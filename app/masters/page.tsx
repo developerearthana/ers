@@ -6,19 +6,20 @@ import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useViewPreference } from '@/hooks/useViewPreference';
 
 export default function MastersDashboard() {
     const cards = [
+        { name: 'Vendors', desc: 'Manage all your vendors and supplier details', href: '/masters/vendors', icon: Tag, color: 'text-teal-600', bg: 'bg-teal-100' },
         { name: 'Company', desc: 'Manage company details & branding', href: '/masters/company', icon: Building2, color: 'text-blue-600', bg: 'bg-blue-100' },
         { name: 'Subsidiaries', desc: 'Configure branch offices & entities', href: '/masters/subsidiaries', icon: Layers, color: 'text-purple-600', bg: 'bg-purple-100' },
         { name: 'Departments', desc: 'Setup functional units (HR, IT...)', href: '/masters/departments', icon: Briefcase, color: 'text-orange-600', bg: 'bg-orange-100' },
         { name: 'Teams', desc: 'Organize workforce groups', href: '/masters/teams', icon: Network, color: 'text-green-600', bg: 'bg-green-100' },
         { name: 'Users', desc: 'Manage access & roles', href: '/masters/users', icon: Users, color: 'text-pink-600', bg: 'bg-white' },
-        { name: 'Vendor Categories', desc: 'Classify vendor types', href: '/masters/vendor-categories', icon: Tag, color: 'text-indigo-600', bg: 'bg-indigo-100' },
         { name: 'Project Templates', desc: 'Configure stage workflows', href: '/masters/project-templates', icon: Layers, color: 'text-indigo-600', bg: 'bg-indigo-100' },
     ];
 
-    const [viewMode, setViewMode] = useState<'grid-sm' | 'grid-md' | 'list'>('grid-md');
+    const [viewMode, setViewMode] = useViewPreference<'grid-sm' | 'grid-md' | 'list'>('mastersViewMode', 'grid-md');
     const [alerts, setAlerts] = useState<any[]>([]);
 
     useEffect(() => {
@@ -91,8 +92,8 @@ export default function MastersDashboard() {
 
             <div className={`
                 ${viewMode === 'list' ? 'flex flex-col gap-3' : ''}
-                ${viewMode === 'grid-sm' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : ''}
-                ${viewMode === 'grid-md' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : ''}
+                ${viewMode === 'grid-sm' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4' : ''}
+                ${viewMode === 'grid-md' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6' : ''}
             `}>
                 {cards.map((card) => {
                     const Icon = card.icon;

@@ -8,6 +8,7 @@ export interface IContact extends Document {
     type: 'Client' | 'Vendor' | 'Partner' | 'Lead';
     status: 'Active' | 'Inactive';
     address?: string;
+    gstin?: string;
     category?: string; // e.g. "Software", "Hardware" for Vendors
     notes?: string;
     createdAt: Date;
@@ -31,6 +32,7 @@ const ContactSchema: Schema = new Schema(
             default: 'Active'
         },
         address: { type: String },
+        gstin: { type: String },
         category: { type: String }, // Industry or Category
         notes: { type: String },
     },

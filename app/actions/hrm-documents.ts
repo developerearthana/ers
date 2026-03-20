@@ -6,30 +6,20 @@ import User from "@/models/User";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 
-/**
- * Get users for document vault filtering
- */
+const ADMIN_ROLES = ["admin", "super-admin", "hr"];
+
+function isAdmin(role: string) {
+    return ADMIN_ROLES.some(r => role.toLowerCase().includes(r));
+}
+
 export async function getVaultUsers() {
     try {
         const session = await auth();
         if (!session?.user?.id) throw new Error("Unauthorized");
-
-        const userRole = session.user.role?.toLowerCase() || "";
-        const isAdminOrHR =
-            userRole.includes("admin") ||
-            userRole.includes("manager") ||
-            userRole.includes("hr");
-
-        if (!isAdminOrHR) {
-            return { success: true, data: [] };
-        }
+        if (!isAdmin(session.user.role || "")) return { success: true, data: [] };
 
         await connectToDatabase();
-        const users = await User.find({})
-            .select('name email role')
-            .sort({ name: 1 })
-            .lean();
-            
+        const users = await User.find({}).select('name email role').sort({ name: 1 }).lean();
         return { success: true, data: JSON.parse(JSON.stringify(users)) };
     } catch (error: any) {
         return { success: false, error: error.message };
@@ -37,9 +27,8 @@ export async function getVaultUsers() {
 }
 
 /**
- * Get HRM documents.
- * - Admin / HR / Manager → see ALL documents
- * - All other roles → see only their own
+ * Admin/HR  → all documents (all statuses)
+ * Staff/etc → only their own documents (all statuses so they see pending/approved/rejected)
  */
 export async function getHRMDocuments() {
     try {
@@ -48,13 +37,8 @@ export async function getHRMDocuments() {
 
         await connectToDatabase();
 
-        const userRole = session.user.role?.toLowerCase() || "";
-        const isAdminOrHR =
-            userRole.includes("admin") ||
-            userRole.includes("manager") ||
-            userRole.includes("hr");
-
-        const filter = isAdminOrHR ? {} : { uploadedBy: session.user.id };
+        const role = session.user.role || "";
+        const filter = isAdmin(role) ? {} : { uploadedBy: session.user.id };
 
         const docs = await Document.find(filter).sort({ createdAt: -1 }).lean();
         return { success: true, data: JSON.parse(JSON.stringify(docs)) };
@@ -74,8 +58,6 @@ export async function uploadHRMDocument(data: {
         const session = await auth();
         if (!session?.user?.id) throw new Error("Unauthorized");
 
-        // Anyone can upload their own documents
-
         await connectToDatabase();
 
         const newDoc = await Document.create({
@@ -84,6 +66,8 @@ export async function uploadHRMDocument(data: {
             type: data.category || data.type || "Other",
             size: data.size,
             uploadedBy: session.user.id,
+            uploadedByName: session.user.name || session.user.email || "Unknown",
+            status: "pending",
         });
 
         revalidatePath("/hrm/documents");
@@ -94,31 +78,53 @@ export async function uploadHRMDocument(data: {
 }
 
 /**
- * Delete a document.
- * - Admin / HR / Manager can delete any document.
- * - Staff cannot delete documents.
+ * Only super-admin / admin / hr can approve.
+ */
+export async function approveHRMDocument(id: string) {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) throw new Error("Unauthorized");
+        if (!isAdmin(session.user.role || "")) throw new Error("Forbidden");
+
+        await connectToDatabase();
+        await Document.findByIdAndUpdate(id, { status: "approved", rejectionReason: undefined });
+
+        revalidatePath("/hrm/documents");
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Only super-admin / admin / hr can reject.
+ */
+export async function rejectHRMDocument(id: string, reason?: string) {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) throw new Error("Unauthorized");
+        if (!isAdmin(session.user.role || "")) throw new Error("Forbidden");
+
+        await connectToDatabase();
+        await Document.findByIdAndUpdate(id, { status: "rejected", rejectionReason: reason || "" });
+
+        revalidatePath("/hrm/documents");
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Only admin/hr can delete. Staff/users cannot delete any document.
  */
 export async function deleteHRMDocument(id: string) {
     try {
         const session = await auth();
         if (!session?.user?.id) throw new Error("Unauthorized");
-
-        const userRole = session.user.role?.toLowerCase() || "";
-        const isAdminOrHR =
-            userRole.includes("admin") ||
-            userRole.includes("manager") ||
-            userRole.includes("hr");
-
-        if (!isAdminOrHR) {
-            const doc = await Document.findById(id);
-            if (!doc) throw new Error("Document not found");
-            if (doc.uploadedBy !== session.user.id) {
-                throw new Error("You can only delete your own documents.");
-            }
-        }
+        if (!isAdmin(session.user.role || "")) throw new Error("Only admins can delete documents.");
 
         await connectToDatabase();
-
         const doc = await Document.findById(id);
         if (!doc) throw new Error("Document not found");
 

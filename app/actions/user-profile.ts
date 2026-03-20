@@ -37,6 +37,33 @@ export const updateProfile = createJSONAction(UpdateProfileSchema, async (data) 
         return { error: error.message || "Failed to update profile" };
     }
 });
+export const getViewPreferences = async (): Promise<Record<string, string>> => {
+    try {
+        const session = await auth();
+        if (!session?.user?.email) return {};
+        await connectToDatabase();
+        const user = await User.findOne({ email: session.user.email }).select('viewPreferences');
+        if (!user?.viewPreferences) return {};
+        return Object.fromEntries(user.viewPreferences);
+    } catch {
+        return {};
+    }
+};
+
+export const saveViewPreference = async (key: string, value: string): Promise<void> => {
+    try {
+        const session = await auth();
+        if (!session?.user?.email) return;
+        await connectToDatabase();
+        await User.findOneAndUpdate(
+            { email: session.user.email },
+            { $set: { [`viewPreferences.${key}`]: value } }
+        );
+    } catch {
+        // Silently fail — localStorage is the fallback
+    }
+};
+
 const ChangePasswordSchema = z.object({
     currentPassword: z.string().min(1, "Current password is required"),
     newPassword: z.string().min(6, "New password must be at least 6 characters"),

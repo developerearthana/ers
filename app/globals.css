@@ -108,16 +108,22 @@
 
   /* Modern Scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: rgba(0,0,0,0.05);
+    border-radius: 999px;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/20 rounded-full transition-colors hover:bg-muted-foreground/40;
+    background: rgba(0,0,0,0.25);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.45);
   }
 }
 
@@ -130,14 +136,19 @@
   */
 
   .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 10px;
+    height: 10px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(0,0,0,0.04);
+    border-radius: 999px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30 rounded-full transition-colors hover:bg-muted-foreground/50;
+    background: rgba(0,0,0,0.20);
+    border-radius: 999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.40);
   }
 
   .glass-1 {

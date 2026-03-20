@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Plus, Search, Filter, Mail, Phone, Edit, Trash2, User as UserIcon, Loader2, MoreVertical, UserCheck, UserX } from 'lucide-react';
+import { Plus, Search, Filter, Mail, Phone, Edit, Trash2, User as UserIcon, Loader2, MoreVertical, UserCheck, UserX, Eye, EyeOff } from 'lucide-react';
 import { PageWrapper, CardWrapper } from '@/components/ui/page-wrapper';
 import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { getAllUsers, createUser, updateUser, deleteUser, toggleUserStatus } from '@/app/actions/user';
+import { getDepartments } from '@/app/actions/organization';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
@@ -17,10 +18,16 @@ interface Employee {
     role: string;
     dept: string;
     email: string;
+    personalEmail?: string;
     phone?: string;
     jobTitle?: string;
     status: 'Active' | 'Inactive' | 'On Leave';
     gradient?: string;
+}
+
+interface Department {
+    _id: string;
+    name: string;
 }
 
 const gradients = [
@@ -32,15 +39,29 @@ const gradients = [
 ];
 
 const ROLES = ['user', 'staff', 'manager', 'admin', 'super-admin', 'vendor', 'customer'];
-const DEPARTMENTS = ['General', 'Sales', 'IT', 'Operations', 'HR', 'Finance', 'Marketing', 'Legal'];
 
-type FormData = { name: string; role: string; dept: string; jobTitle: string; email: string; phone: string; password: string; status: 'Active' | 'Inactive' | 'On Leave'; };
-const defaultForm: FormData = { name: '', role: 'staff', dept: 'General', jobTitle: '', email: '', phone: '', password: 'password123', status: 'Active' };
+type FormData = {
+    name: string;
+    role: string;
+    dept: string;
+    jobTitle: string;
+    email: string;
+    personalEmail: string;
+    phone: string;
+    password: string;
+    status: 'Active' | 'Inactive' | 'On Leave';
+};
+
+const defaultForm: FormData = {
+    name: '', role: 'staff', dept: '', jobTitle: '',
+    email: '', personalEmail: '', phone: '', password: 'password123', status: 'Active'
+};
 
 export default function EmployeesPage() {
     const [employees, setEmployees] = useState<Employee[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
+    const [showSheet, setShowSheet] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [formData, setFormData] = useState<FormData>(defaultForm);
     const [searchQuery, setSearchQuery] = useState('');
@@ -48,33 +69,36 @@ export default function EmployeesPage() {
     const [statusFilter, setStatusFilter] = useState('All');
     const [saving, setSaving] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
-    useEffect(() => { loadEmployees(); }, []);
+    useEffect(() => { loadData(); }, []);
 
-    const loadEmployees = async () => {
+    const loadData = async () => {
         setLoading(true);
         try {
-            const data = await getAllUsers();
-            if (data) {
-                setEmployees(data.map((emp: any, idx: number) => ({
+            const [empData, deptData] = await Promise.all([getAllUsers(), getDepartments()]);
+            if (empData) {
+                setEmployees(empData.map((emp: any, idx: number) => ({
                     ...emp,
                     gradient: gradients[idx % gradients.length]
                 })));
             }
+            setDepartments(deptData || []);
         } catch {
-            toast.error("Failed to load employees");
+            toast.error("Failed to load data");
         } finally {
             setLoading(false);
         }
     };
 
-    const openAddModal = () => {
+    const openAddSheet = () => {
         setEditingEmployee(null);
         setFormData(defaultForm);
-        setShowModal(true);
+        setShowPassword(false);
+        setShowSheet(true);
     };
 
-    const openEditModal = (emp: Employee) => {
+    const openEditSheet = (emp: Employee) => {
         setEditingEmployee(emp);
         setFormData({
             name: emp.name,
@@ -82,17 +106,19 @@ export default function EmployeesPage() {
             dept: emp.dept,
             jobTitle: emp.jobTitle || '',
             email: emp.email,
+            personalEmail: emp.personalEmail || '',
             phone: emp.phone || '',
             password: '',
-            status: emp.status as 'Active' | 'Inactive' | 'On Leave',
+            status: emp.status,
         });
-        setShowModal(true);
+        setShowPassword(false);
+        setShowSheet(true);
         setOpenMenuId(null);
     };
 
     const handleSave = async () => {
         if (!formData.name || !formData.email) {
-            toast.error("Name and email are required");
+            toast.error("Name and work email are required");
             return;
         }
         setSaving(true);
@@ -105,8 +131,8 @@ export default function EmployeesPage() {
             }
             if (res.success) {
                 toast.success(editingEmployee ? "Employee updated" : "Employee added");
-                setShowModal(false);
-                loadEmployees();
+                setShowSheet(false);
+                loadData();
             } else {
                 toast.error(res.error || "Operation failed");
             }
@@ -123,7 +149,7 @@ export default function EmployeesPage() {
         const res = await deleteUser({ id: emp._id || emp.id! });
         if (res.success) {
             toast.success("Employee deleted");
-            loadEmployees();
+            loadData();
         } else {
             toast.error(res.error || "Failed to delete");
         }
@@ -133,7 +159,7 @@ export default function EmployeesPage() {
         setOpenMenuId(null);
         await toggleUserStatus(emp._id || emp.id!, emp.status);
         toast.success(`Employee ${emp.status === 'Active' ? 'deactivated' : 'activated'}`);
-        loadEmployees();
+        loadData();
     };
 
     const filtered = employees.filter(emp => {
@@ -150,6 +176,16 @@ export default function EmployeesPage() {
         </div>
     );
 
+    const field = (label: string, children: React.ReactNode) => (
+        <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">{label}</label>
+            {children}
+        </div>
+    );
+
+    const inputCls = "w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all";
+    const selectCls = inputCls + " cursor-pointer";
+
     return (
         <PageWrapper className="space-y-6 max-w-7xl mx-auto">
             {/* Header */}
@@ -158,7 +194,7 @@ export default function EmployeesPage() {
                     <h1 className="text-3xl font-bold text-primary tracking-tight">Employees</h1>
                     <p className="text-muted-foreground mt-1">{employees.length} team members • {employees.filter(e => e.status === 'Active').length} active</p>
                 </div>
-                <Button onClick={openAddModal} className="shadow-lg shadow-primary/20 hover:scale-105 transition-all w-full sm:w-auto">
+                <Button onClick={openAddSheet} className="shadow-lg shadow-primary/20 hover:scale-105 transition-all w-full sm:w-auto">
                     <Plus className="w-4 h-4 mr-2" />Add Employee
                 </Button>
             </div>
@@ -184,7 +220,7 @@ export default function EmployeesPage() {
                         className="px-3 py-2 border border-border rounded-lg text-sm font-medium text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
                     >
                         <option value="All">All Depts</option>
-                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                        {departments.map(d => <option key={d._id} value={d.name}>{d.name}</option>)}
                     </select>
                     <select
                         aria-label="Status filter"
@@ -224,31 +260,18 @@ export default function EmployeesPage() {
                             </button>
                             {openMenuId === emp._id && (
                                 <div className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-xl shadow-xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                                    <button
-                                        onClick={() => openEditModal(emp)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors text-left"
-                                    >
+                                    <button onClick={() => openEditSheet(emp)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors text-left">
                                         <Edit className="w-3.5 h-3.5" /> Edit Employee
                                     </button>
-                                    <Link
-                                        href={`/hrm/employees/${emp._id}/salary`}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-                                        onClick={() => setOpenMenuId(null)}
-                                    >
+                                    <Link href={`/hrm/employees/${emp._id}/salary`} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors" onClick={() => setOpenMenuId(null)}>
                                         <Filter className="w-3.5 h-3.5" /> Configure Salary
                                     </Link>
-                                    <button
-                                        onClick={() => handleToggleStatus(emp)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-left"
-                                    >
+                                    <button onClick={() => handleToggleStatus(emp)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-left">
                                         {emp.status === 'Active' ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
                                         {emp.status === 'Active' ? 'Deactivate' : 'Activate'}
                                     </button>
                                     <div className="h-px bg-border mx-2" />
-                                    <button
-                                        onClick={() => handleDelete(emp)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
-                                    >
+                                    <button onClick={() => handleDelete(emp)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left">
                                         <Trash2 className="w-3.5 h-3.5" /> Delete
                                     </button>
                                 </div>
@@ -286,10 +309,7 @@ export default function EmployeesPage() {
                             )}>
                                 {emp.status}
                             </span>
-                            <Link
-                                href={`/hrm/employees/${emp._id}/salary`}
-                                className="text-xs text-primary hover:underline font-medium"
-                            >
+                            <Link href={`/hrm/employees/${emp._id}/salary`} className="text-xs text-primary hover:underline font-medium">
                                 Salary →
                             </Link>
                         </div>
@@ -297,146 +317,110 @@ export default function EmployeesPage() {
                 ))}
             </div>
 
-            {/* Add/Edit Modal */}
-            <AnimatePresence>
-                {showModal && (
-                    <motion.div key="employee-modal-backdrop" className="relative z-50">
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
-                            onClick={() => setShowModal(false)}
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto"
-                        >
-                            <div className="glass-card bg-card rounded-2xl p-6 shadow-2xl border border-border">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-bold text-foreground">
-                                        {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
-                                    </h3>
-                                    <Button variant="ghost" size="sm" onClick={() => setShowModal(false)}>✕</Button>
-                                </div>
+            {/* Add/Edit Sheet — slides from left */}
+            <Sheet open={showSheet} onOpenChange={setShowSheet}>
+                <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+                    <SheetHeader className="mb-6">
+                        <SheetTitle className="text-xl font-bold">
+                            {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
+                        </SheetTitle>
+                    </SheetHeader>
 
-                                <div className="space-y-4">
-                                    {/* Name */}
-                                    <div>
-                                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Full Name *</label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
-                                            value={formData.name}
-                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                            placeholder="e.g. Arjun Sharma"
-                                        />
-                                    </div>
+                    <div className="space-y-5 pb-20">
+                        {/* Full Name */}
+                        {field("Full Name *",
+                            <input type="text" className={inputCls} value={formData.name}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                placeholder="e.g. Arjun Sharma" />
+                        )}
 
-                                    {/* Email */}
-                                    <div>
-                                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Email *</label>
-                                        <input
-                                            type="email"
-                                            className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
-                                            value={formData.email}
-                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                            placeholder="arjun@company.com"
-                                            disabled={!!editingEmployee}
-                                        />
-                                    </div>
+                        {/* Work Email + Personal Email */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {field("Work Email *",
+                                <input type="email" className={inputCls} value={formData.email}
+                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                    placeholder="arjun@company.com"
+                                    disabled={!!editingEmployee} />
+                            )}
+                            {field("Personal Email",
+                                <input type="email" className={inputCls} value={formData.personalEmail}
+                                    onChange={e => setFormData({ ...formData, personalEmail: e.target.value })}
+                                    placeholder="arjun@gmail.com" />
+                            )}
+                        </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {/* Role */}
-                                        <div>
-                                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">System Role</label>
-                                            <select
-                                                className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
-                                                value={formData.role}
-                                                onChange={e => setFormData({ ...formData, role: e.target.value })}
-                                            >
-                                                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                                            </select>
-                                        </div>
-                                        {/* Dept */}
-                                        <div>
-                                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Department</label>
-                                            <select
-                                                className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
-                                                value={formData.dept}
-                                                onChange={e => setFormData({ ...formData, dept: e.target.value })}
-                                            >
-                                                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
+                        {/* Role + Department */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {field("System Role",
+                                <select className={selectCls} value={formData.role}
+                                    onChange={e => setFormData({ ...formData, role: e.target.value })}>
+                                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                            )}
+                            {field("Department",
+                                <select className={selectCls} value={formData.dept}
+                                    onChange={e => setFormData({ ...formData, dept: e.target.value })}>
+                                    <option value="">Select Department</option>
+                                    {departments.map(d => <option key={d._id} value={d.name}>{d.name}</option>)}
+                                </select>
+                            )}
+                        </div>
 
-                                    {/* Job Title */}
-                                    <div>
-                                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Job Title</label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
-                                            value={formData.jobTitle}
-                                            onChange={e => setFormData({ ...formData, jobTitle: e.target.value })}
-                                            placeholder="e.g. Senior Developer"
-                                        />
-                                    </div>
+                        {/* Job Title */}
+                        {field("Job Title",
+                            <input type="text" className={inputCls} value={formData.jobTitle}
+                                onChange={e => setFormData({ ...formData, jobTitle: e.target.value })}
+                                placeholder="e.g. Senior Developer" />
+                        )}
 
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {/* Phone */}
-                                        <div>
-                                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Phone</label>
-                                            <input
-                                                type="text"
-                                                className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
-                                                value={formData.phone}
-                                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                                placeholder="+91 98765 43210"
-                                            />
-                                        </div>
-                                        {/* Status */}
-                                        <div>
-                                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Status</label>
-                                            <select
-                                                className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
-                                                value={formData.status}
-                                                onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                                            >
-                                                <option value="Active">Active</option>
-                                                <option value="Inactive">Inactive</option>
-                                                <option value="On Leave">On Leave</option>
-                                            </select>
-                                        </div>
-                                    </div>
+                        {/* Phone + Status */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {field("Phone",
+                                <input type="text" className={inputCls} value={formData.phone}
+                                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                    placeholder="+91 98765 43210" />
+                            )}
+                            {field("Status",
+                                <select className={selectCls} value={formData.status}
+                                    onChange={e => setFormData({ ...formData, status: e.target.value as any })}>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="On Leave">On Leave</option>
+                                </select>
+                            )}
+                        </div>
 
-                                    {/* Password (only for new employees) */}
-                                    {!editingEmployee && (
-                                        <div>
-                                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Initial Password</label>
-                                            <input
-                                                type="password"
-                                                className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
-                                                value={formData.password}
-                                                onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                                placeholder="Minimum 8 characters"
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                                        <Button variant="ghost" onClick={() => setShowModal(false)} disabled={saving}>Cancel</Button>
-                                        <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
-                                            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                                            {editingEmployee ? 'Save Changes' : 'Add Employee'}
-                                        </Button>
-                                    </div>
-                                </div>
+                        {/* Initial Password (only for new employees) */}
+                        {!editingEmployee && field("Initial Password",
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    className={inputCls + " pr-10"}
+                                    value={formData.password}
+                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                    placeholder="Minimum 8 characters"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
                             </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        )}
+
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            <Button variant="ghost" onClick={() => setShowSheet(false)} disabled={saving}>Cancel</Button>
+                            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
+                                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                {editingEmployee ? 'Save Changes' : 'Add Employee'}
+                            </Button>
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
 
             {/* Click-outside handler for dropdown */}
             {openMenuId && (

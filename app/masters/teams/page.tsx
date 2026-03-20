@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { getTeams, createTeam, updateTeam, deleteTeam } from '@/app/actions/organization';
 import { getAllUsers } from '@/app/actions/user';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useViewPreference } from '@/hooks/useViewPreference';
 import { cn } from '@/lib/utils';
 
 interface User {
@@ -38,7 +39,7 @@ export default function TeamsMaster() {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useViewPreference<'grid' | 'list'>('teamsViewMode', 'grid');
 
     const [formData, setFormData] = useState<{
         name: string;
@@ -56,15 +57,10 @@ export default function TeamsMaster() {
 
     useEffect(() => {
         loadData();
-        const savedView = localStorage.getItem('teamsViewMode');
-        if (savedView === 'grid' || savedView === 'list') {
-            setViewMode(savedView);
-        }
     }, []);
 
     const toggleViewMode = (mode: 'grid' | 'list') => {
         setViewMode(mode);
-        localStorage.setItem('teamsViewMode', mode);
     };
 
     const loadData = async () => {
@@ -274,20 +270,20 @@ export default function TeamsMaster() {
                                         <table className="w-full text-sm text-left">
                                             <thead className="text-xs text-gray-700 uppercase bg-background border-b">
                                                 <tr>
-                                                    <th className="px-6 py-3 font-medium">Team Name</th>
-                                                    <th className="px-6 py-3 font-medium">Lead</th>
-                                                    <th className="px-6 py-3 font-medium">Members</th>
-                                                    <th className="px-6 py-3 font-medium text-right">Actions</th>
+                                                    <th className="px-3 sm:px-6 py-3 font-medium">Team Name</th>
+                                                    <th className="px-3 sm:px-6 py-3 font-medium hidden sm:table-cell">Lead</th>
+                                                    <th className="px-3 sm:px-6 py-3 font-medium hidden md:table-cell">Members</th>
+                                                    <th className="px-3 sm:px-6 py-3 font-medium text-right">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
                                                 {filteredTeams.map((team) => (
                                                     <tr key={team._id || team.id} className="hover:bg-background/50">
-                                                        <td className="px-6 py-3 font-medium text-gray-900">{team.name}</td>
-                                                        <td className="px-6 py-3 text-gray-600">
+                                                        <td className="px-3 sm:px-6 py-3 font-medium text-gray-900 text-sm">{team.name}</td>
+                                                        <td className="px-3 sm:px-6 py-3 text-gray-600 hidden sm:table-cell text-sm">
                                                             {typeof team.teamLead === 'object' ? team.teamLead?.name : '-'}
                                                         </td>
-                                                        <td className="px-6 py-3">
+                                                        <td className="px-3 sm:px-6 py-3 hidden md:table-cell">
                                                             <div className="flex -space-x-2 overflow-hidden">
                                                                 {team.members.map((member: any) => (
                                                                     <div key={member._id} className="relative inline-block h-8 w-8 rounded-full ring-2 ring-white" title={`${member.name} (${member.dept} - ${member.role})`}>
@@ -300,8 +296,8 @@ export default function TeamsMaster() {
                                                                 {team.members.length === 0 && <span className="text-gray-400">-</span>}
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-3 text-right">
-                                                            <div className="flex items-center justify-end gap-2">
+                                                        <td className="px-3 sm:px-6 py-3 text-right">
+                                                            <div className="flex items-center justify-end gap-1 sm:gap-2">
                                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600 hover:bg-amber-50 rounded-full" onClick={() => handleOpenSheet(team)}>
                                                                     <Edit className="w-4 h-4" />
                                                                 </Button>
