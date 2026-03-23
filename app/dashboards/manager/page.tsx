@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Users, Clock, FileText, TrendingUp, ArrowUpRight, CheckSquare, Target, Loader2, Bell } from "lucide-react";
+import { Users, Clock, FileText, TrendingUp, ArrowUpRight, CheckSquare, Target, Loader2, Bell, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getUpcomingAlerts } from "@/app/actions/activity/calendar";
-import { format } from "date-fns";
+import { format, isToday } from "date-fns";
 import MyKPIs from "@/components/kpi/MyKPIs";
 import { getTeams } from "@/app/actions/organization";
 import { getMyKPIAssignments } from "@/app/actions/kpi-assignments";
+import { punchIn, punchOut, getAttendance } from "@/app/actions/hrm";
+import { toast } from "sonner";
 
 type TeamType = {
     _id?: string;
@@ -31,12 +33,15 @@ export default function ManagerDashboard() {
     const [kpis, setKpis] = useState<KPIType[]>([]);
     const [alerts, setAlerts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isPunchedIn, setIsPunchedIn] = useState(false);
+    const [punchTime, setPunchTime] = useState<string | null>(null);
+    const [actionLoading, setActionLoading] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
             const [teamsRes, kpisRes, alertsRes] = await Promise.all([
-                getTeams(), 
+                getTeams(),
                 getMyKPIAssignments(),
                 getUpcomingAlerts()
             ]);
@@ -50,7 +55,50 @@ export default function ManagerDashboard() {
 
     useEffect(() => {
         load();
+        const loadAttendance = async () => {
+            try {
+                const now = new Date();
+                const attRes = await getAttendance(undefined, now.getMonth(), now.getFullYear());
+                if (attRes.success && attRes.data) {
+                    const todayRec = attRes.data.find((r: any) => isToday(new Date(r.date)));
+                    if (todayRec?.punchIn && !todayRec?.punchOut) {
+                        setIsPunchedIn(true);
+                        setPunchTime(format(new Date(todayRec.punchIn), 'HH:mm'));
+                    }
+                }
+            } catch (e) { console.warn('Attendance load failed', e); }
+        };
+        loadAttendance();
     }, [load]);
+
+    const handlePunch = async () => {
+        setActionLoading(true);
+        try {
+            if (!isPunchedIn) {
+                const res = await punchIn();
+                if (res.success) {
+                    setIsPunchedIn(true);
+                    setPunchTime(format(new Date(res.data.punchIn), 'HH:mm'));
+                    toast.success('Punched in successfully!');
+                } else {
+                    toast.error(res.error || 'Punch in failed');
+                }
+            } else {
+                const res = await punchOut();
+                if (res.success) {
+                    setIsPunchedIn(false);
+                    setPunchTime(null);
+                    toast.success('Punched out successfully!');
+                } else {
+                    toast.error(res.error || 'Punch out failed');
+                }
+            }
+        } catch {
+            toast.error('An error occurred');
+        } finally {
+            setActionLoading(false);
+        }
+    };
 
     const teamStats = useMemo(() => {
         return teams.map((team) => {
@@ -101,13 +149,40 @@ export default function ManagerDashboard() {
                     </div>
                     <h1 className="text-xl font-bold">Team Overview</h1>
                 </div>
-                <Link
-                    href="/masters/kpi-assignments"
-                    className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white text-blue-700 text-sm font-semibold hover:bg-blue-50 transition-colors"
-                >
-                    <Target className="w-4 h-4" />
-                    KPI Assignment
-                </Link>
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/masters/kpi-assignments"
+                        className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white text-blue-700 text-sm font-semibold hover:bg-blue-50 transition-colors"
+                    >
+                        <Target className="w-4 h-4" />
+                        KPI Assignment
+                    </Link>
+                    <div className="flex items-center gap-3 bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+                        {punchTime && (
+                            <div className="text-right hidden md:block">
+                                <p className="text-xs text-blue-100">Punched in at</p>
+                                <p className="font-mono font-bold">{punchTime}</p>
+                            </div>
+                        )}
+                        {punchTime && <div className="h-8 w-px bg-white/20 hidden md:block" />}
+                        <button
+                            onClick={handlePunch}
+                            disabled={actionLoading}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors ${isPunchedIn
+                                ? 'bg-red-500 hover:bg-red-600 text-white'
+                                : 'bg-white text-blue-700 hover:bg-blue-50'
+                                } disabled:opacity-60`}
+                        >
+                            {actionLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : isPunchedIn ? (
+                                <><LogOut className="w-4 h-4" /> Punch Out</>
+                            ) : (
+                                <><LogIn className="w-4 h-4" /> Punch In</>
+                            )}
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

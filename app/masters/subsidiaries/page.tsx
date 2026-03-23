@@ -128,8 +128,8 @@ export default function SubsidiariesMaster() {
                 <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {subsidiaries.length === 0 && <p className="text-center col-span-2 text-gray-500 py-10">No subsidiaries found.</p>}
-                    {subsidiaries.map((sub) => (
+                    {subsidiaries.filter(sub => sub.name !== 'Earthana').length === 0 && <p className="text-center col-span-2 text-gray-500 py-10">No subsidiaries found.</p>}
+                    {subsidiaries.filter(sub => sub.name !== 'Earthana').map((sub) => (
                         <div
                             key={sub._id || sub.id}
                             className="bg-white border rounded-xl p-5 hover:border-primary/50 transition-all hover:shadow-md group relative flex flex-col justify-between h-full min-h-[180px]"

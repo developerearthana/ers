@@ -1,11 +1,11 @@
 "use client";
 
-import { Activity, Users, DollarSign, ArrowUpRight, ShieldCheck, Server, AlertTriangle, Download, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Activity, Users, DollarSign, ArrowUpRight, ShieldCheck, Server, AlertTriangle, Download, Clock, CheckCircle2, XCircle, LogIn, LogOut, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, useCallback } from "react";
-import { getLiveUsers, getLeaves, approveLeave } from "@/app/actions/hrm";
+import { getLiveUsers, getLeaves, approveLeave, punchIn, punchOut, getAttendance } from "@/app/actions/hrm";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, isToday } from "date-fns";
 import dynamic from 'next/dynamic';
 import { Target } from "lucide-react";
 import { getAllKPIAssignments } from "@/app/actions/kpi-assignments";
@@ -17,17 +17,59 @@ export default function SuperAdminDashboard() {
     const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
     const [loadingLive, setLoadingLive] = useState(true);
     const [kpis, setKpis] = useState<any[]>([]);
+    const [isPunchedIn, setIsPunchedIn] = useState(false);
+    const [punchTime, setPunchTime] = useState<string | null>(null);
+    const [actionLoading, setActionLoading] = useState(false);
 
     const loadKPIs = useCallback(async () => {
         const res = await getAllKPIAssignments();
         if (res.success) setKpis(res.data || []);
     }, []);
 
+    const handlePunch = async () => {
+        setActionLoading(true);
+        try {
+            if (!isPunchedIn) {
+                const res = await punchIn();
+                if (res.success) {
+                    setIsPunchedIn(true);
+                    setPunchTime(format(new Date(res.data.punchIn), 'HH:mm'));
+                    toast.success('Punched in successfully!');
+                } else {
+                    toast.error(res.error || 'Punch in failed');
+                }
+            } else {
+                const res = await punchOut();
+                if (res.success) {
+                    setIsPunchedIn(false);
+                    setPunchTime(null);
+                    toast.success('Punched out successfully!');
+                } else {
+                    toast.error(res.error || 'Punch out failed');
+                }
+            }
+        } catch {
+            toast.error('An error occurred');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     useEffect(() => {
         const loadDashboardData = async () => {
             try {
-                // Load sequentially to avoid overwhelming the server on cold start
-                // Each wrapped independently so one failure doesn't crash the whole dashboard
+                try {
+                    const now = new Date();
+                    const attRes = await getAttendance(undefined, now.getMonth(), now.getFullYear());
+                    if (attRes.success && attRes.data) {
+                        const todayRec = attRes.data.find((r: any) => isToday(new Date(r.date)));
+                        if (todayRec?.punchIn && !todayRec?.punchOut) {
+                            setIsPunchedIn(true);
+                            setPunchTime(format(new Date(todayRec.punchIn), 'HH:mm'));
+                        }
+                    }
+                } catch (e) { console.warn('Attendance load failed', e); }
+
                 try {
                     const liveRes = await getLiveUsers();
                     if (liveRes.success && liveRes.data) setLiveUsers(liveRes.data);
@@ -87,10 +129,35 @@ export default function SuperAdminDashboard() {
                     </h1>
                     <p className="text-muted-foreground text-sm">Welcome back, Administrator</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-3">
                     <Button variant="outline" size="sm" className="hidden sm:flex">
                         <Download className="mr-2 h-4 w-4" /> Export
                     </Button>
+                    <div className="flex items-center gap-3 bg-muted/50 p-2 rounded-lg">
+                        {punchTime && (
+                            <div className="text-right hidden md:block">
+                                <p className="text-xs text-muted-foreground">Punched in at</p>
+                                <p className="font-mono font-bold text-sm">{punchTime}</p>
+                            </div>
+                        )}
+                        {punchTime && <div className="h-8 w-px bg-border hidden md:block" />}
+                        <button
+                            onClick={handlePunch}
+                            disabled={actionLoading}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors ${isPunchedIn
+                                ? 'bg-red-500 hover:bg-red-600 text-white'
+                                : 'bg-primary text-white hover:bg-primary/90'
+                                } disabled:opacity-60`}
+                        >
+                            {actionLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : isPunchedIn ? (
+                                <><LogOut className="w-4 h-4" /> Punch Out</>
+                            ) : (
+                                <><LogIn className="w-4 h-4" /> Punch In</>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
 

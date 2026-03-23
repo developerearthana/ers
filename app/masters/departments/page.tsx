@@ -163,7 +163,7 @@ export default function DepartmentsMaster() {
                         </SelectTrigger>
                         <SelectContent className="bg-white">
                             <SelectItem value="All Subsidiaries">All Entities</SelectItem>
-                            {subsidiaries.map(sub => (
+                            {subsidiaries.filter(sub => sub.name !== 'Earthana').map(sub => (
                                 <SelectItem key={sub._id} value={sub.name}>{sub.name}</SelectItem>
                             ))}
                         </SelectContent>
