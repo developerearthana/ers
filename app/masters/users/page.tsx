@@ -58,6 +58,7 @@ export default function UsersMaster() {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
+        personalEmail: '',
         password: '',
         role: 'user',
         dept: 'General',
@@ -98,6 +99,7 @@ export default function UsersMaster() {
             setFormData({
                 name: user.name,
                 email: user.email,
+                personalEmail: (user as any).personalEmail || '',
                 password: '',
                 role: user.role,
                 dept: user.dept || 'General',
@@ -109,7 +111,7 @@ export default function UsersMaster() {
         } else {
             setCurrentUser(null);
             setFormData({
-                name: '', email: '', password: '', role: 'user', dept: 'General', jobTitle: '', status: 'Active', customRole: ''
+                name: '', email: '', personalEmail: '', password: '', role: 'user', dept: 'General', jobTitle: '', status: 'Active', customRole: ''
             });
             setSelectedRoleValue('system:user');
         }
@@ -400,7 +402,7 @@ export default function UsersMaster() {
 
             {/* Create/Edit Sheet */}
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+                <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
                     <SheetHeader>
                         <SheetTitle>{currentUser ? 'Edit User' : 'Add New User'}</SheetTitle>
                     </SheetHeader>
@@ -417,15 +419,26 @@ export default function UsersMaster() {
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>Email Address <span className="text-red-500">*</span></Label>
-                                <Input
-                                    required
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                    placeholder="john@example.com"
-                                />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Work Email Address <span className="text-red-500">*</span></Label>
+                                    <Input
+                                        required
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                        placeholder="john@company.com"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Personal Mail ID</Label>
+                                    <Input
+                                        type="email"
+                                        value={formData.personalEmail}
+                                        onChange={e => setFormData({ ...formData, personalEmail: e.target.value })}
+                                        placeholder="john@gmail.com"
+                                    />
+                                </div>
                             </div>
 
                             <div className="space-y-2">

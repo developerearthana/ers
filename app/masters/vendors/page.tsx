@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2, X, Tag, Building2 } from 'lucide-react';
-import { getMasters, createMaster } from '@/app/actions/masters';
+import { Plus, Trash2, Loader2, X, Tag, Building2, Edit2, Check } from 'lucide-react';
+import { getMasters, createMaster, updateMaster, deleteMaster } from '@/app/actions/masters';
 import { getVendors, createVendor, deleteVendor } from '@/app/actions/vendors';
 import { toast } from 'sonner';
 import {
@@ -49,11 +49,16 @@ export default function VendorsPage() {
     });
     const [savingVendor, setSavingVendor] = useState(false);
 
-    // Add Category dialog state
+    // Add/Manage Category dialog state
     const [showCategoryDialog, setShowCategoryDialog] = useState(false);
     const [catName, setCatName] = useState('');
     const [catDesc, setCatDesc] = useState('');
     const [savingCat, setSavingCat] = useState(false);
+    // Inline edit state for categories
+    const [editCatId, setEditCatId] = useState<string | null>(null);
+    const [editCatName, setEditCatName] = useState('');
+    const [editCatDesc, setEditCatDesc] = useState('');
+    const [savingEditCat, setSavingEditCat] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -120,6 +125,35 @@ export default function VendorsPage() {
         setSavingCat(false);
     };
 
+    const handleEditCatSave = async () => {
+        if (!editCatId || !editCatName.trim()) return;
+        setSavingEditCat(true);
+        const res = await updateMaster(editCatId, {
+            label: editCatName.trim(),
+            value: editCatName.trim(),
+            metadata: { description: editCatDesc },
+        } as any);
+        if (res.success) {
+            toast.success('Category updated');
+            setEditCatId(null);
+            await loadCategories();
+        } else {
+            toast.error(res.error || 'Failed to update');
+        }
+        setSavingEditCat(false);
+    };
+
+    const handleDeleteCategory = async (id: string, name: string) => {
+        if (!confirm(`Delete category "${name}"?`)) return;
+        const res = await deleteMaster(id);
+        if (res.success) {
+            toast.success('Category deleted');
+            await loadCategories();
+        } else {
+            toast.error(res.error || 'Failed to delete');
+        }
+    };
+
     const handleDeleteVendor = async (id: string, name: string) => {
         if (!confirm(`Delete vendor "${name}"?`)) return;
         const res = await deleteVendor(id);
@@ -145,7 +179,7 @@ export default function VendorsPage() {
                         className="flex items-center gap-2 border border-border bg-card text-foreground px-4 py-2 rounded-lg hover:bg-muted transition-colors font-medium text-sm"
                     >
                         <Tag className="w-4 h-4" />
-                        Add Category
+                        Manage Categories
                     </button>
                     <button
                         onClick={() => setShowVendorSheet(true)}
@@ -353,54 +387,94 @@ export default function VendorsPage() {
                 </SheetContent>
             </Sheet>
 
-            {/* ─── Add Category Dialog ─── */}
-            <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
-                <DialogContent className="sm:max-w-md">
+            {/* ─── Manage Categories Dialog ─── */}
+            <Dialog open={showCategoryDialog} onOpenChange={(open) => {
+                setShowCategoryDialog(open);
+                if (!open) { setCatName(''); setCatDesc(''); setEditCatId(null); }
+            }}>
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Add Vendor Category</DialogTitle>
+                        <DialogTitle>Manage Vendor Categories</DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleAddCategory} className="space-y-4 mt-2">
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-1.5">
-                                Category Name <span className="text-red-500">*</span>
-                            </label>
+
+                    {/* Existing categories list */}
+                    {categories.length > 0 && (
+                        <div className="border border-border rounded-lg overflow-hidden mb-4 max-h-60 overflow-y-auto">
+                            {categories.map((cat) => (
+                                <div key={cat._id} className="flex items-center gap-2 px-3 py-2.5 border-b border-border last:border-0 group hover:bg-muted/20">
+                                    {editCatId === cat._id ? (
+                                        <>
+                                            <input
+                                                autoFocus
+                                                className="flex-1 border border-border rounded px-2 py-1 text-sm bg-background focus:ring-2 focus:ring-primary/20 outline-none"
+                                                value={editCatName}
+                                                onChange={e => setEditCatName(e.target.value)}
+                                            />
+                                            <input
+                                                className="flex-1 border border-border rounded px-2 py-1 text-sm bg-background focus:ring-2 focus:ring-primary/20 outline-none"
+                                                placeholder="Description"
+                                                value={editCatDesc}
+                                                onChange={e => setEditCatDesc(e.target.value)}
+                                            />
+                                            <button onClick={handleEditCatSave} disabled={savingEditCat} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors disabled:opacity-60">
+                                                {savingEditCat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                            </button>
+                                            <button onClick={() => setEditCatId(null)} className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors">
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Tag className="w-3.5 h-3.5 text-primary/50 shrink-0" />
+                                            <span className="flex-1 text-sm font-medium text-foreground">{cat.label}</span>
+                                            <span className="flex-1 text-xs text-muted-foreground truncate">{(cat as any).metadata?.description || ''}</span>
+                                            <button
+                                                onClick={() => { setEditCatId(cat._id); setEditCatName(cat.label); setEditCatDesc((cat as any).metadata?.description || ''); }}
+                                                className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                                title="Edit"
+                                            >
+                                                <Edit2 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteCategory(cat._id, cat.label)}
+                                                className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Add new category form */}
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Add New Category</p>
+                    <form onSubmit={handleAddCategory} className="space-y-3">
+                        <div className="flex gap-2">
                             <input
                                 type="text"
                                 required
-                                autoFocus
-                                placeholder="e.g. Electrical, Plumbing, Civil Works"
+                                placeholder="Category name"
                                 value={catName}
                                 onChange={e => setCatName(e.target.value)}
-                                className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                                className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                             />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-1.5">
-                                Description
-                            </label>
                             <input
                                 type="text"
-                                placeholder="Short description (optional)"
+                                placeholder="Description (optional)"
                                 value={catDesc}
                                 onChange={e => setCatDesc(e.target.value)}
-                                className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                                className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                             />
-                        </div>
-                        <div className="flex gap-3 pt-1">
-                            <button
-                                type="button"
-                                onClick={() => { setShowCategoryDialog(false); setCatName(''); setCatDesc(''); }}
-                                className="flex-1 px-4 py-2.5 border border-border bg-card text-foreground rounded-lg text-sm font-medium hover:bg-muted transition-colors"
-                            >
-                                Cancel
-                            </button>
                             <button
                                 type="submit"
                                 disabled={savingCat}
-                                className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                                className="shrink-0 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-1.5 disabled:opacity-60"
                             >
-                                {savingCat && <Loader2 className="w-4 h-4 animate-spin" />}
-                                Save
+                                {savingCat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                Add
                             </button>
                         </div>
                     </form>

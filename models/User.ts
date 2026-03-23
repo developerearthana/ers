@@ -51,7 +51,25 @@ const UserSchema: Schema = new Schema(
                 other: { type: Number, default: 0 }
             }
         },
-        viewPreferences: { type: Map, of: String, default: {} }
+        viewPreferences: { type: Map, of: String, default: {} },
+        // Extended employee profile
+        isEmployee: { type: Boolean, default: false },
+        employeeId: { type: String },
+        employeeCategory: { type: String },
+        alternatePhone: { type: String },
+        dateOfBirth: { type: Date },
+        gender: { type: String, enum: ['Male', 'Female', 'Other', 'Prefer not to say'] },
+        maritalStatus: { type: String, enum: ['Single', 'Married', 'Divorced', 'Widowed'] },
+        reportingManager: { type: Schema.Types.ObjectId, ref: 'User' },
+        probationEndDate: { type: Date },
+        noticePeriod: { type: Number }, // in months
+        bankDetails: {
+            bankName: { type: String },
+            accountType: { type: String, enum: ['Savings', 'Checking'] },
+            accountHolderName: { type: String },
+            accountNumber: { type: String },
+            upiId: { type: String }
+        }
     },
     { timestamps: true }
 );

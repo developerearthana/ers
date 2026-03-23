@@ -17,6 +17,7 @@ export default function MastersDashboard() {
         { name: 'Teams', desc: 'Organize workforce groups', href: '/masters/teams', icon: Network, color: 'text-green-600', bg: 'bg-green-100' },
         { name: 'Users', desc: 'Manage access & roles', href: '/masters/users', icon: Users, color: 'text-pink-600', bg: 'bg-white' },
         { name: 'Project Templates', desc: 'Configure stage workflows', href: '/masters/project-templates', icon: Layers, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+        { name: 'Employee Categories', desc: 'Define employment types (Full-time, Contract...)', href: '/masters/employee-categories', icon: Briefcase, color: 'text-rose-600', bg: 'bg-rose-100' },
     ];
 
     const [viewMode, setViewMode] = useViewPreference<'grid-sm' | 'grid-md' | 'list'>('mastersViewMode', 'grid-md');
