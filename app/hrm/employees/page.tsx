@@ -58,6 +58,7 @@ export default function EmployeesPage() {
     const [formData, setFormData] = useState(emptyForm);
     const [saving, setSaving] = useState(false);
     const [hasDraft, setHasDraft] = useState(false);
+    const [errors, setErrors] = useState<Record<string, boolean>>({});
     const [searchQuery, setSearchQuery] = useState('');
     const [deptFilter, setDeptFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
@@ -156,12 +157,22 @@ export default function EmployeesPage() {
         setCurrentStep(0);
         setEditingEmployee(null);
     };
-    const set = (field: string, value: string) => setFormData(prev => ({ ...prev, [field]: value }));
+    const set = (field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) setErrors(prev => ({ ...prev, [field]: false }));
+    };
 
     const validateStep = () => {
-        if (currentStep === 0 && !formData.name.trim()) {
-            toast.error("Full name is required"); return false;
+        if (currentStep === 0) {
+            const newErrors: Record<string, boolean> = {};
+            if (!formData.name.trim()) newErrors.name = true;
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors);
+                toast.error("Please fill in all required fields");
+                return false;
+            }
         }
+        setErrors({});
         return true;
     };
 
@@ -217,21 +228,24 @@ export default function EmployeesPage() {
 
     const inputCls = "w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-background text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all";
     const selectCls = inputCls + " cursor-pointer";
-    const field = (label: string, required: boolean, children: React.ReactNode) => (
+    const field = (label: string, required: boolean, children: React.ReactNode, hasError = false) => (
         <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <label className={cn("text-xs font-semibold uppercase tracking-wide", hasError ? "text-red-500" : "text-muted-foreground")}>
                 {label}{required && <span className="text-red-500 ml-1">*</span>}
             </label>
-            {children}
+            <div className={hasError ? "ring-2 ring-red-500 rounded-lg" : ""}>
+                {children}
+            </div>
+            {hasError && <p className="text-xs text-red-500 mt-0.5">This field is required</p>}
         </div>
     );
 
     // ── Multi-step Add Form Screen ──────────────────────────────────────────
     if (showAddForm) {
         return (
-            <div className="min-h-screen bg-background">
+            <div className="h-screen flex flex-col bg-background overflow-hidden">
                 {/* Top bar */}
-                <div className="sticky top-0 z-10 bg-card border-b border-border px-6 py-4 flex items-center justify-between shadow-sm">
+                <div className="shrink-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between shadow-sm z-10">
                     <button onClick={() => closeAdd(false)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                         <ArrowLeft className="w-4 h-4" /> Back to Employees
                     </button>
@@ -254,7 +268,7 @@ export default function EmployeesPage() {
                 </div>
 
                 {/* Step Indicator */}
-                <div className="max-w-5xl mx-auto px-6 pt-8 pb-2">
+                <div className="shrink-0 max-w-5xl mx-auto w-full px-6 pt-8 pb-2">
                     <div className="flex items-center">
                         {STEPS.map((step, idx) => (
                             <div key={step} className="flex items-center flex-1">
@@ -280,6 +294,7 @@ export default function EmployeesPage() {
                 </div>
 
                 {/* Form Body — wider card */}
+                <div className="flex-1 overflow-y-auto">
                 <div className="max-w-5xl mx-auto px-6 py-8">
                     <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6">
 
@@ -294,7 +309,8 @@ export default function EmployeesPage() {
                                 <div className="flex flex-col lg:flex-row gap-6">
                                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-5">
                                         {field("Full Name", true,
-                                            <input className={inputCls} value={formData.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Arjun Sharma" />
+                                            <input className={inputCls} value={formData.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Arjun Sharma" />,
+                                            errors.name
                                         )}
                                         {field("Employee ID", false,
                                             <input className={inputCls} value={formData.employeeId} onChange={e => set('employeeId', e.target.value)} placeholder="e.g. EMP-001" />
@@ -441,23 +457,25 @@ export default function EmployeesPage() {
                             </>
                         )}
 
-                        {/* Navigation */}
-                        <div className="flex justify-between items-center pt-6 border-t border-border">
-                            <Button variant="outline" onClick={currentStep === 0 ? closeAdd : handleBack} disabled={saving}>
-                                {currentStep === 0 ? 'Cancel' : <><ArrowLeft className="w-4 h-4 mr-1.5" />Back</>}
-                            </Button>
-                            {currentStep < STEPS.length - 1 ? (
-                                <Button onClick={handleNext}>
-                                    Next <ArrowRight className="w-4 h-4 ml-1.5" />
-                                </Button>
-                            ) : (
-                                <Button onClick={handleSubmit} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
-                                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-1.5" />}
-                                    {editingEmployee ? 'Update Employee' : 'Save Employee'}
-                                </Button>
-                            )}
-                        </div>
                     </div>
+                </div>
+
+                {/* Navigation — sticky inside scroll */}
+                <div className="sticky bottom-0 bg-card border-t border-border px-6 py-4 flex justify-between items-center">
+                    <Button variant="outline" onClick={currentStep === 0 ? closeAdd : handleBack} disabled={saving}>
+                        {currentStep === 0 ? 'Cancel' : <><ArrowLeft className="w-4 h-4 mr-1.5" />Back</>}
+                    </Button>
+                    {currentStep < STEPS.length - 1 ? (
+                        <Button onClick={handleNext}>
+                            Next <ArrowRight className="w-4 h-4 ml-1.5" />
+                        </Button>
+                    ) : (
+                        <Button onClick={handleSubmit} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-1.5" />}
+                            {editingEmployee ? 'Update Employee' : 'Save Employee'}
+                        </Button>
+                    )}
+                </div>
                 </div>
             </div>
         );
