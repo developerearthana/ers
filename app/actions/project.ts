@@ -40,3 +40,12 @@ export const updateProject = async (id: string, data: any) => {
         return { success: false, error: error.message };
     }
 };
+
+export const getProjectById = async (id: string) => {
+    try {
+        const project = await projectService.getProjectById(id);
+        return { success: true, data: project };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+};

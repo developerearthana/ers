@@ -67,15 +67,17 @@ export const toggleUserStatus = async (id: string, currentStatus: string) => {
     }
 };
 
-export const resetUserPassword = async (id: string) => {
+export const resetUserPassword = async (id: string, newPassword: string) => {
     try {
-        // In a real app, this might generate a token or send an email.
-        // For this requirements, we might just set a default or return success if the UI handles the input.
-        // Wait, the plan said "Simple dialog with New Password input".
-        // So we need an action that accepts the password.
-        throw new Error("Use resetUserPasswordWithInput instead");
-    } catch (error) {
-        return { success: false, error: "Legacy method" };
+        if (!newPassword || newPassword.length < 6) {
+            return { success: false, error: "Password must be at least 6 characters" };
+        }
+        await userService.updatePassword(id, newPassword);
+        revalidatePath("/admin/users");
+        revalidatePath("/hrm/employees");
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
     }
 }
 

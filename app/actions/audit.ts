@@ -2,6 +2,7 @@
 
 import { AuditService } from "@/services/AuditService";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 
 export async function getAuditLogs(filters: any = {}, page: number = 1) {
     try {
@@ -25,10 +26,10 @@ export async function getComplianceStats() {
 // Utility action to manually log an event (e.g., from client side special interactions)
 // Most logging should happen in server actions of other modules
 export async function logClientEvent(action: string, resource: string, details: any) {
-    // In a real app, we'd get the user from the session here
     try {
-        // Mocking user ID retrieval for now or passing undefined for public actions
-        await AuditService.logAction(undefined, action, resource, undefined, details, 'success');
+        const session = await auth();
+        const userId = session?.user?.id;
+        await AuditService.logAction(userId, action, resource, undefined, details, 'success');
         return { success: true };
     } catch (error) {
         return { success: false };

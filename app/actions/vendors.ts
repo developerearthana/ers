@@ -28,7 +28,7 @@ export async function createVendor(data: {
     try {
         const vendor = await Contact.create({
             name: data.name,
-            email: data.email || `vendor_${Date.now()}@placeholder.com`,
+            email: data.email || undefined,
             phone: data.phone,
             address: data.address,
             gstin: data.gstin,

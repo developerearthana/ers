@@ -15,8 +15,6 @@ export async function uploadFile(formData: FormData) {
         console.log("Upload Session:", session?.user?.id);
         if (!session?.user?.id) throw new Error('Unauthorized');
 
-        await ensureUploadDir();
-
         const file = formData.get('file') as File;
         const folderId = formData.get('folderId') as string | null;
 

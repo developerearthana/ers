@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, CheckCircle2, Circle, Clock, MoreHorizontal, Plus, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { MOCK_PROJECT_TEMPLATES } from '@/lib/mock-data';
@@ -14,9 +14,17 @@ export default function ProjectStagesPage({ params }: { params: Promise<{ id: st
     const { id } = use(params);
     // State to manage stages for this specific project (allowing customization)
     const [stages, setStages] = useState(PROJECT_STAGES);
+    const [currentStageIndex, setCurrentStageIndex] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(`project-stage-index-${id}`);
+            return saved !== null ? parseInt(saved, 10) : 0;
+        }
+        return 0;
+    });
 
-    // Mock progress calculation
-    const currentStageIndex = 3; // Architectural Planning
+    useEffect(() => {
+        localStorage.setItem(`project-stage-index-${id}`, String(currentStageIndex));
+    }, [currentStageIndex, id]);
 
     const [showImportModal, setShowImportModal] = useState(false);
 
@@ -116,13 +124,22 @@ export default function ProjectStagesPage({ params }: { params: Promise<{ id: st
 
                                 {/* Stage Content Card */}
                                 <div className={`flex-1 glass-card p-5 rounded-xl border transition-all
-                                    ${isCurrent ? 'border-blue-200 shadow-md ring-1 ring-blue-50' : 'border-gray-200 hover:border-gray-300'}`
+                                    ${isCompleted ? 'border-green-200 bg-green-50/40' :
+                                      isCurrent ? 'border-blue-200 shadow-md ring-1 ring-blue-50' :
+                                      'border-gray-200 hover:border-gray-300'}`
                                 }>
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
-                                            <h3 className={`text-lg font-bold ${isCompleted ? 'text-gray-900' : isCurrent ? 'text-blue-700' : 'text-gray-500'}`}>
-                                                {stage.name}
-                                            </h3>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className={`text-lg font-bold ${isCompleted ? 'text-gray-500 line-through' : isCurrent ? 'text-blue-700' : 'text-gray-500'}`}>
+                                                    {stage.name}
+                                                </h3>
+                                                {isCompleted && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+                                                        <CheckCircle2 className="w-3 h-3" /> Completed
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="flex gap-2 mt-2">
                                                 {stage.modules.map((mod: string) => (
                                                     <span key={mod} className="text-xs font-medium px-2 py-0.5 rounded bg-background text-gray-600 border border-gray-200">
@@ -147,7 +164,10 @@ export default function ProjectStagesPage({ params }: { params: Promise<{ id: st
                                                 <button className="px-3 py-1.5 bg-white border border-blue-200 text-blue-700 text-xs font-semibold rounded-md shadow-sm hover:bg-white">
                                                     Open Dashboard
                                                 </button>
-                                                <button className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-md shadow-sm hover:bg-blue-700">
+                                                <button
+                                                    onClick={() => setCurrentStageIndex(i => Math.min(i + 1, stages.length))}
+                                                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-md shadow-sm hover:bg-blue-700"
+                                                >
                                                     Mark Complete
                                                 </button>
                                             </div>
