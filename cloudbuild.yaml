@@ -29,6 +29,7 @@ steps:
       - '--port=8080'
       - '--memory=1Gi'
       - '--cpu=1'
+      - '--update-env-vars=AUTH_TRUST_HOST=true,NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1'
 
 images:
   - 'gcr.io/$PROJECT_ID/earthana:$COMMIT_SHA'
