@@ -33,8 +33,6 @@ steps:
 
 images:
   - 'gcr.io/$PROJECT_ID/earthana:latest'
-substitutions:
-  _UNUSED: 'placeholder'
 
 options:
   machineType: 'E2_HIGHCPU_8'
