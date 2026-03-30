@@ -7,13 +7,16 @@ steps:
       - 'NEXT_TELEMETRY_DISABLED=1'
       - '-t'
       - 'gcr.io/$PROJECT_ID/earthana:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/earthana:latest'
       - '.'
 
   # Push to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/earthana:$COMMIT_SHA'
+      - '--all-tags'
+      - 'gcr.io/$PROJECT_ID/earthana'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -22,7 +25,7 @@ steps:
       - 'run'
       - 'deploy'
       - 'earthana'
-      - '--image=gcr.io/$PROJECT_ID/earthana:$COMMIT_SHA'
+      - '--image=gcr.io/$PROJECT_ID/earthana:latest'
       - '--region=europe-west1'
       - '--platform=managed'
       - '--allow-unauthenticated'
@@ -32,7 +35,7 @@ steps:
       - '--update-env-vars=AUTH_TRUST_HOST=true,NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1'
 
 images:
-  - 'gcr.io/$PROJECT_ID/earthana:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/earthana:latest'
 
 options:
   machineType: 'E2_HIGHCPU_8'
