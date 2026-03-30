@@ -6,8 +6,6 @@ steps:
       - '--build-arg'
       - 'NEXT_TELEMETRY_DISABLED=1'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/earthana:$COMMIT_SHA'
-      - '-t'
       - 'gcr.io/$PROJECT_ID/earthana:latest'
       - '.'
 
@@ -15,8 +13,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - '--all-tags'
-      - 'gcr.io/$PROJECT_ID/earthana'
+      - 'gcr.io/$PROJECT_ID/earthana:latest'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -36,6 +33,8 @@ steps:
 
 images:
   - 'gcr.io/$PROJECT_ID/earthana:latest'
+substitutions:
+  _UNUSED: 'placeholder'
 
 options:
   machineType: 'E2_HIGHCPU_8'
