@@ -3,6 +3,8 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
+      - '--build-arg'
+      - 'NEXT_TELEMETRY_DISABLED=1'
       - '-t'
       - 'gcr.io/$PROJECT_ID/earthana:$COMMIT_SHA'
       - '.'
@@ -25,11 +27,12 @@ steps:
       - '--platform=managed'
       - '--allow-unauthenticated'
       - '--port=8080'
-      - '--memory=512Mi'
+      - '--memory=1Gi'
       - '--cpu=1'
 
 images:
   - 'gcr.io/$PROJECT_ID/earthana:$COMMIT_SHA'
 
 options:
+  machineType: 'E2_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
