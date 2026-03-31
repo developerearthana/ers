@@ -28,6 +28,8 @@ async function getUser(email: string) {
     }
 }
 
+console.log('[AUTH_DEBUG] AUTH_SECRET set:', !!process.env.AUTH_SECRET, '| NEXTAUTH_SECRET set:', !!process.env.NEXTAUTH_SECRET);
+
 export const { auth, signIn, signOut, handlers } = NextAuth({
     ...authConfig,
     secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
