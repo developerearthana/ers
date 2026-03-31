@@ -3,7 +3,7 @@ import { authConfig } from './auth.config';
 
 export default NextAuth({
     ...authConfig,
-    secret: process.env.AUTH_SECRET,
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
 }).auth;
 
 export const config = {

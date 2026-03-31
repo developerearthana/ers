@@ -30,7 +30,7 @@ async function getUser(email: string) {
 
 export const { auth, signIn, signOut, handlers } = NextAuth({
     ...authConfig,
-    secret: process.env.AUTH_SECRET,
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
     trustHost: true,
     session: {
         strategy: 'jwt',
