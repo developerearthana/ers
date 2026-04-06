@@ -12,44 +12,34 @@ export class SalesService {
     async getDashboardStats() {
         await connectToDatabase();
 
-        // 1. Total Revenue (Closed Won deals)
-        const revenueAgg = await Deal.aggregate([
-            { $match: { stage: 'Closed Won' } },
-            { $group: { _id: null, total: { $sum: "$value" } } }
+        const [revenueAgg, pipelineResult, newLeadsCount, recentDeals, funnelAgg, leadsCount] = await Promise.all([
+            // 1. Total Revenue (Closed Won deals)
+            Deal.aggregate([
+                { $match: { stage: 'Closed Won' } },
+                { $group: { _id: null, total: { $sum: "$value" } } }
+            ]),
+            // 2. Active Deals count + pipeline value in one pass
+            Deal.aggregate([
+                { $match: { stage: { $nin: ['Closed Won', 'Closed Lost'] } } },
+                { $group: { _id: null, count: { $sum: 1 }, total: { $sum: "$value" } } }
+            ]),
+            // 3. New Leads
+            Lead.countDocuments({ status: 'New' }),
+            // 4. Recent Deals
+            Deal.find({}).sort({ updatedAt: -1 }).limit(5).lean(),
+            // 5. Funnel Data
+            Deal.aggregate([{ $group: { _id: "$stage", count: { $sum: 1 } } }]),
+            // 6. Total Leads
+            Lead.countDocuments({})
         ]);
 
-        // 2. Active Deals (Not Closed)
-        const activeDealsCount = await Deal.countDocuments({
-            stage: { $nin: ['Closed Won', 'Closed Lost'] }
-        });
-
-        // 3. Pipeline Value (Active Deals Value)
-        const pipelineAgg = await Deal.aggregate([
-            { $match: { stage: { $nin: ['Closed Won', 'Closed Lost'] } } },
-            { $group: { _id: null, total: { $sum: "$value" } } }
-        ]);
-
-        // 4. New Leads (Status = New)
-        const newLeadsCount = await Lead.countDocuments({ status: 'New' });
-
-        // 5. Recent Deals
-        const recentDeals = await Deal.find({})
-            .sort({ updatedAt: -1 })
-            .limit(5)
-            .lean();
-
-        // 6. Funnel Data
-        const funnelAgg = await Deal.aggregate([
-            { $group: { _id: "$stage", count: { $sum: 1 } } }
-        ]);
-
-        // Count Leads for top of funnel
-        const leadsCount = await Lead.countDocuments({});
+        const activeDealsCount = pipelineResult[0]?.count || 0;
+        const pipelineValue = pipelineResult[0]?.total || 0;
 
         return {
             revenue: revenueAgg[0]?.total || 0,
             activeDeals: activeDealsCount,
-            pipelineValue: pipelineAgg[0]?.total || 0,
+            pipelineValue: pipelineValue,
             newLeads: newLeadsCount,
             recentDeals: JSON.parse(JSON.stringify(recentDeals)).map((d: any) => ({
                 id: d._id.toString(),

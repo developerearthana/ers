@@ -5,7 +5,7 @@ import { createJSONAction } from "@/lib/safe-action";
 import { auth } from "@/auth";
 import { Company, Subsidiary, Department, Team } from "@/models/Organization";
 import connectToDatabase from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 
 // --- Company Actions ---
 
@@ -20,26 +20,28 @@ const UpdateCompanySchema = z.object({
     iconLogo: z.string().optional(),
 });
 
-export const getCompany = async () => {
+const _fetchCompany = async () => {
     try {
         await connectToDatabase();
-        // For this app, we assume a single main company.
-        // In a multi-tenant app, we'd filter by user's org ID.
-        let company = await Company.findOne();
+        let company = await Company.findOne().lean();
         if (!company) {
-            // Create default if not exists
             company = await Company.create({
                 name: 'Earthana India Pvt Ltd',
                 address: '1201, Cyber One, Business Park, Vashi, Mumbai - 400703, Maharashtra',
                 registrationNumber: '27AABCU9603R1Z2',
             });
+            return JSON.parse(JSON.stringify(company));
         }
         return JSON.parse(JSON.stringify(company));
     } catch (e) {
-        // Return a fallback so the layout doesn't crash during static build or if DB is down
         return { name: "Earthana (Offline Mode)" };
     }
 };
+
+export const getCompany = unstable_cache(_fetchCompany, ['company-data'], {
+    revalidate: 3600,
+    tags: ['company'],
+});
 
 export const updateCompany = createJSONAction(UpdateCompanySchema, async (data) => {
     try {
@@ -51,6 +53,7 @@ export const updateCompany = createJSONAction(UpdateCompanySchema, async (data) 
         const company = await Company.findOneAndUpdate({}, { $set: data }, { new: true, upsert: true });
 
         revalidatePath("/masters/company");
+        revalidateTag("company");
         return { success: true, company: JSON.parse(JSON.stringify(company)) };
     } catch (error: any) {
         return { error: error.message || "Failed to update company" };

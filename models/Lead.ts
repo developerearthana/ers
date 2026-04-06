@@ -41,4 +41,8 @@ const LeadSchema: Schema = new Schema(
     { timestamps: true }
 );
 
+LeadSchema.index({ status: 1 });
+LeadSchema.index({ contactId: 1 });
+LeadSchema.index({ createdAt: -1 });
+
 export default mongoose.models.Lead || mongoose.model<ILead>('Lead', LeadSchema);

@@ -60,7 +60,7 @@ export class InventoryService {
     async getInventoryDashboardData() {
         await connectToDatabase();
 
-        const [totalProducts, lowStockItems, totalValueAgg] = await Promise.all([
+        const [totalProducts, lowStockItems, totalValueAgg, outOfStock, lowStockCount, distribution] = await Promise.all([
             Product.countDocuments({ status: 'Active' }),
             Product.find({
                 status: 'Active',
@@ -69,19 +69,13 @@ export class InventoryService {
             Product.aggregate([
                 { $match: { status: 'Active' } },
                 { $group: { _id: null, total: { $sum: { $multiply: ["$quantity", "$price"] } } } }
+            ]),
+            Product.countDocuments({ status: 'Active', quantity: 0 }),
+            Product.countDocuments({ status: 'Active', $expr: { $lte: ["$quantity", "$minLevel"] } }),
+            Product.aggregate([
+                { $match: { status: 'Active' } },
+                { $group: { _id: "$category", count: { $sum: 1 } } }
             ])
-        ]);
-
-        const outOfStock = await Product.countDocuments({ status: 'Active', quantity: 0 });
-        const lowStockCount = await Product.countDocuments({
-            status: 'Active',
-            $expr: { $lte: ["$quantity", "$minLevel"] }
-        });
-
-        // Category distribution
-        const distribution = await Product.aggregate([
-            { $match: { status: 'Active' } },
-            { $group: { _id: "$category", count: { $sum: 1 } } }
         ]);
 
         return {

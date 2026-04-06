@@ -35,4 +35,8 @@ const LeaveRequestSchema: Schema = new Schema({
     approverRole: { type: String }
 }, { timestamps: true });
 
+LeaveRequestSchema.index({ userId: 1 });
+LeaveRequestSchema.index({ status: 1 });
+LeaveRequestSchema.index({ startDate: 1, endDate: 1 });
+
 export default mongoose.models.LeaveRequest || mongoose.model<ILeaveRequest>('LeaveRequest', LeaveRequestSchema);

@@ -5,7 +5,7 @@ import { sanitizeObject } from '@/lib/sanitize';
 export class MarketingService {
     async getCampaigns() {
         await connectToDatabase();
-        const campaigns = await Campaign.find({}).sort({ startDate: -1 });
+        const campaigns = await Campaign.find({}).sort({ startDate: -1 }).lean();
         return JSON.parse(JSON.stringify(campaigns)).map((c: any) => ({
             id: c._id.toString(),
             name: c.name,

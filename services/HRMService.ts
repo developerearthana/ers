@@ -56,7 +56,7 @@ export class HRMService {
         // In real app, strictly filter by session user ID.
         const query = employeeId ? { employeeId } : {};
 
-        const slips = await Payroll.find(query).sort({ paymentDate: -1 });
+        const slips = await Payroll.find(query).sort({ paymentDate: -1 }).lean();
 
         // Mock data if empty for demo purposes (Important for "wow" factor if db empty)
         if (slips.length === 0) {
@@ -73,7 +73,7 @@ export class HRMService {
 
     async getLeaveRequests(filter: any = {}) {
         await connectToDatabase();
-        const requests = await LeaveRequest.find(filter).sort({ createdAt: -1 });
+        const requests = await LeaveRequest.find(filter).sort({ createdAt: -1 }).lean();
         return JSON.parse(JSON.stringify(requests));
     }
 
@@ -120,7 +120,7 @@ export class HRMService {
             query.date = { $gte: startDate, $lte: endDate };
         }
 
-        const records = await Attendance.find(query).sort({ date: 1 });
+        const records = await Attendance.find(query).sort({ date: 1 }).lean();
         return JSON.parse(JSON.stringify(records));
     }
 
@@ -133,7 +133,7 @@ export class HRMService {
 
         const records = await Attendance.find({
             date: { $gte: targetDate, $lt: nextDay }
-        }).populate('userId', 'name email dept role image').sort({ punchIn: 1 });
+        }).populate('userId', 'name email dept role image').sort({ punchIn: 1 }).lean();
 
         return JSON.parse(JSON.stringify(records));
     }
@@ -145,7 +145,7 @@ export class HRMService {
 
         const records = await Attendance.find({
             date: { $gte: startDate, $lte: endDate }
-        }).populate('userId', 'name email dept role image').sort({ date: -1, punchIn: 1 });
+        }).populate('userId', 'name email dept role image').sort({ date: -1, punchIn: 1 }).lean();
 
         return JSON.parse(JSON.stringify(records));
     }
@@ -157,10 +157,10 @@ export class HRMService {
         const nextDay = new Date(targetDate);
         nextDay.setDate(nextDay.getDate() + 1);
 
-        const activeUsers = await User.find({ status: 'Active' }, 'name email dept role image');
+        const activeUsers = await User.find({ status: 'Active' }, 'name email dept role image').lean();
         const attendances = await Attendance.find({
             date: { $gte: targetDate, $lt: nextDay }
-        });
+        }).lean();
 
         const attendanceMap = new Map();
         attendances.forEach(a => attendanceMap.set(a.userId.toString(), a));
@@ -187,7 +187,7 @@ export class HRMService {
             date: { $gte: today, $lt: nextDay },
             punchIn: { $exists: true, $ne: null },
             punchOut: { $exists: false }
-        }).populate('userId', 'name email dept role image');
+        }).populate('userId', 'name email dept role image').lean();
 
         return JSON.parse(JSON.stringify(records));
     }

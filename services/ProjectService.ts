@@ -69,16 +69,13 @@ export class ProjectService {
     async getDashboardStats() {
         await connectToDatabase();
 
-        const totalProjects = await Project.countDocuments({});
-        const completedProjects = await Project.countDocuments({ status: 'Completed' });
-        const inProgressProjects = await Project.countDocuments({ status: 'In Progress' });
-        const atRiskProjects = await Project.countDocuments({ status: 'At Risk' });
-
-        // Get Active Projects (not completed)
-        const activeProjects = await Project.find({ status: { $ne: 'Completed' } })
-            .sort({ updatedAt: -1 })
-            .limit(10)
-            .lean();
+        const [totalProjects, completedProjects, inProgressProjects, atRiskProjects, activeProjects] = await Promise.all([
+            Project.countDocuments({}),
+            Project.countDocuments({ status: 'Completed' }),
+            Project.countDocuments({ status: 'In Progress' }),
+            Project.countDocuments({ status: 'At Risk' }),
+            Project.find({ status: { $ne: 'Completed' } }).sort({ updatedAt: -1 }).limit(10).lean(),
+        ]);
 
         return {
             total: totalProjects,
