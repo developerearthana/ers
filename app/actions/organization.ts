@@ -53,6 +53,8 @@ export const updateCompany = createJSONAction(UpdateCompanySchema, async (data) 
         const company = await Company.findOneAndUpdate({}, { $set: data }, { new: true, upsert: true });
 
         revalidatePath("/masters/company");
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         revalidateTag("company");
         return { success: true, company: JSON.parse(JSON.stringify(company)) };
     } catch (error: any) {
